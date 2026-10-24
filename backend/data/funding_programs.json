@@ -1,0 +1,73 @@
+{
+  "_note": "APPROXIMATE program parameters for demo purposes, summarized from public program descriptions. Award ranges and match rules change each funding round; verify against current NOFOs before use.",
+  "programs": [
+    {
+      "id": "fsp_national",
+      "name": "Federal-State Partnership for Intercity Passenger Rail (National)",
+      "agency": "FRA",
+      "kind": "grant",
+      "eligible_project_types": ["new_alignment", "upgrade"],
+      "federal_match_pct": 80,
+      "typical_award_usd": [100000000, 3000000000],
+      "notes": "Primary federal capital program for intercity passenger rail outside the Northeast Corridor main line. Projects in the Corridor ID pipeline are prioritized.",
+      "approximate": true
+    },
+    {
+      "id": "fsp_nec",
+      "name": "Federal-State Partnership for Intercity Passenger Rail (Northeast Corridor)",
+      "agency": "FRA",
+      "kind": "grant",
+      "eligible_project_types": ["upgrade"],
+      "federal_match_pct": 80,
+      "typical_award_usd": [50000000, 4000000000],
+      "notes": "Limited to projects on the Northeast Corridor (Washington-Boston main line). Only NEC-adjacent elements, such as New York Penn Station approaches, could qualify.",
+      "requires_nec": true,
+      "approximate": true
+    },
+    {
+      "id": "crisi",
+      "name": "Consolidated Rail Infrastructure and Safety Improvements (CRISI)",
+      "agency": "FRA",
+      "kind": "grant",
+      "eligible_project_types": ["upgrade", "new_alignment"],
+      "federal_match_pct": 80,
+      "typical_award_usd": [5000000, 250000000],
+      "notes": "Safety, capacity and reliability improvements, including grade crossings, sidings and passenger rail improvements on existing lines.",
+      "approximate": true
+    },
+    {
+      "id": "build",
+      "name": "BUILD (formerly RAISE) Grants",
+      "agency": "USDOT",
+      "kind": "grant",
+      "eligible_project_types": ["upgrade", "new_alignment"],
+      "federal_match_pct": 80,
+      "typical_award_usd": [1000000, 25000000],
+      "notes": "Highly competitive surface transportation grants capped at about $25M per award; best suited to discrete components such as a station or grade separation.",
+      "approximate": true
+    },
+    {
+      "id": "rrif",
+      "name": "Railroad Rehabilitation and Improvement Financing (RRIF)",
+      "agency": "USDOT Build America Bureau",
+      "kind": "loan",
+      "eligible_project_types": ["upgrade", "new_alignment"],
+      "federal_match_pct": 0,
+      "typical_award_usd": [10000000, 3000000000],
+      "max_loan_pct": 100,
+      "notes": "Low-interest direct loans and loan guarantees for up to 100% of eligible costs. Must be repaid, so it fits the non-federal share when a revenue source exists.",
+      "approximate": true
+    },
+    {
+      "id": "corridor_id",
+      "name": "Corridor Identification and Development Program (Corridor ID)",
+      "agency": "FRA",
+      "kind": "planning",
+      "eligible_project_types": ["upgrade", "new_alignment"],
+      "federal_match_pct": 100,
+      "typical_award_usd": [500000, 500000],
+      "notes": "Planning pipeline for new or improved intercity corridors. Step 1 (scoping) is federally funded at about $500K; later service-development steps need a non-federal share. This is the gateway to FSP-National capital funding.",
+      "approximate": true
+    }
+  ]
+}

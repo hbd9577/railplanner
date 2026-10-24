@@ -25,7 +25,7 @@ import numpy as np
 from pyproj import Transformer
 from scipy.ndimage import binary_dilation, gaussian_filter
 from shapely.geometry import LineString, mapping
-from shapely.ops import transform as shp_transform
+import shapely
 from skimage.graph import route_through_array
 
 from .config import DATA_DIR
@@ -173,7 +173,7 @@ class Candidate:
         return self.line.length / METERS_PER_MILE
 
     def geojson(self) -> dict:
-        ll = shp_transform(lambda x, y: _to_lonlat.transform(x, y), self.line)
+        ll = shapely.transform(self.line, lambda xy: np.column_stack(_to_lonlat.transform(xy[:, 0], xy[:, 1])))
         geom = mapping(ll)
         geom["coordinates"] = [[round(x, 5), round(y, 5)] for x, y in geom["coordinates"]]
         return geom

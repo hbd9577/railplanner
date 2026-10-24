@@ -106,3 +106,10 @@ CREATE TABLE IF NOT EXISTS proposals (
     number_check  JSONB,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Full payloads so a cached plan can be rebuilt exactly (added in Phase 3).
+ALTER TABLE routes ADD COLUMN IF NOT EXISTS strategy_description TEXT;
+
+ALTER TABLE routes ADD COLUMN IF NOT EXISTS stats JSONB;
+
+ALTER TABLE route_funding_matches ADD COLUMN IF NOT EXISTS details JSONB;

@@ -1,0 +1,21 @@
+item,terrain,density,unit,low,mode,high,notes
+new_track,flat,rural,usd_m_per_mile,15,25,45,"ILLUSTRATIVE. Double-track 110-125 mph new alignment incl. land, track, systems, earthwork. Bracketed by publicly reported US projects (e.g. Brightline Florida extension ~$30M/mi; Brightline West ~$55M/mi); not calibrated."
+new_track,flat,suburban,usd_m_per_mile,25,40,70,ILLUSTRATIVE
+new_track,flat,urban,usd_m_per_mile,60,100,200,"ILLUSTRATIVE. Urban new ROW dominated by acquisition, utilities, structures."
+new_track,rolling,rural,usd_m_per_mile,22,35,60,ILLUSTRATIVE
+new_track,rolling,suburban,usd_m_per_mile,35,55,95,ILLUSTRATIVE
+new_track,rolling,urban,usd_m_per_mile,80,130,250,ILLUSTRATIVE
+new_track,mountainous,rural,usd_m_per_mile,40,70,130,ILLUSTRATIVE
+new_track,mountainous,suburban,usd_m_per_mile,55,90,160,ILLUSTRATIVE
+new_track,mountainous,urban,usd_m_per_mile,120,200,350,ILLUSTRATIVE
+upgrade_factor,any,any,fraction_of_new,0.25,0.35,0.55,"ILLUSTRATIVE. Upgrading active ROW (track, signals/PTC, curve easing, sidings) vs new build. Chicago-St. Louis 110 mph program ~$7M/mi sits near the low end."
+reactivation_factor,any,any,fraction_of_new,0.55,0.70,0.90,ILLUSTRATIVE. Rebuilding on inactive/abandoned ROW: no acquisition but full reconstruction.
+bridge,any,any,usd_m_per_crossing,30,60,150,ILLUSTRATIVE. Major river crossing (new or replacement).
+grade_separation,any,any,usd_m_per_crossing,8,15,30,ILLUSTRATIVE. Highway-rail grade separation.
+grade_separation_rate,any,rural,crossings_per_mile,0.3,0.5,0.8,ILLUSTRATIVE. Crossings to separate per route mile.
+grade_separation_rate,any,suburban,crossings_per_mile,1.0,1.5,2.5,ILLUSTRATIVE
+grade_separation_rate,any,urban,crossings_per_mile,2.0,3.0,5.0,ILLUSTRATIVE
+heavy_structure,mountainous,any,usd_m_per_mile,150,250,400,ILLUSTRATIVE. Tunnel/long viaduct on new mountainous alignment.
+heavy_structure_share,mountainous,any,fraction_of_miles,0.05,0.10,0.20,ILLUSTRATIVE. Share of new mountainous miles needing heavy structures.
+station,any,any,usd_m_per_station,20,40,90,ILLUSTRATIVE. New or substantially rebuilt intercity station.
+contingency,any,any,fraction,0.15,0.22,0.30,Unallocated contingency applied to total.
