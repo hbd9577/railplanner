@@ -6,5 +6,14 @@
   {"name": "Albany",        "state": "NY", "lat": 42.6526, "lon": -73.7562, "population": 99224},
   {"name": "Utica",         "state": "NY", "lat": 43.1009, "lon": -75.2327, "population": 65283},
   {"name": "Binghamton",    "state": "NY", "lat": 42.0987, "lon": -75.9180, "population": 47969},
-  {"name": "Poughkeepsie",  "state": "NY", "lat": 41.7004, "lon": -73.9210, "population": 31577}
+  {"name": "Poughkeepsie",  "state": "NY", "lat": 41.7004, "lon": -73.9210, "population": 31577},
+  {"name": "Chicago",       "state": "IL", "lat": 41.8789, "lon": -87.6403, "population": 2746388},
+  {"name": "Philadelphia",  "state": "PA", "lat": 39.9557, "lon": -75.1822, "population": 1603797},
+  {"name": "Cleveland",     "state": "OH", "lat": 41.4993, "lon": -81.6944, "population": 372624},
+  {"name": "Pittsburgh",    "state": "PA", "lat": 40.4446, "lon": -79.9924, "population": 302971},
+  {"name": "Toledo",        "state": "OH", "lat": 41.6528, "lon": -83.5379, "population": 270871},
+  {"name": "Fort Wayne",    "state": "IN", "lat": 41.0793, "lon": -85.1394, "population": 263886},
+  {"name": "South Bend",    "state": "IN", "lat": 41.6764, "lon": -86.2520, "population": 103453},
+  {"name": "Erie",          "state": "PA", "lat": 42.1292, "lon": -80.0851, "population": 94831},
+  {"name": "Harrisburg",    "state": "PA", "lat": 40.2732, "lon": -76.8867, "population": 50099}
 ]

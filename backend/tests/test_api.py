@@ -22,13 +22,13 @@ def ids(client):
 
 
 def test_cities(client, ids):
-    assert len(ids) == 8 and "Albany" in ids
+    assert len(ids) == 17 and {"Albany", "Chicago"} <= set(ids)
 
 
 def test_demo_pairs(client):
     pairs = client.get("/demo-pairs").json()
-    assert len(pairs) == 3
-    assert pairs[0]["label"].startswith("Albany")
+    assert len(pairs) == 4
+    assert pairs[0]["label"].startswith("New York City")
 
 
 def test_plan_validation(client, ids):
@@ -63,7 +63,7 @@ def test_db_down_falls_back(client, ids, monkeypatch):
     monkeypatch.setattr(db, "_down_until", time.monotonic() + 600)
 
     cities = client.get("/cities").json()
-    assert len(cities) == 8
+    assert len(cities) == 17
 
     r = client.post("/plan", json={"origin_id": ids["Albany"], "dest_id": ids["Buffalo"]})
     assert r.status_code == 200

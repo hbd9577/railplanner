@@ -16,6 +16,12 @@ from .models import CostShare, FundingMatch, RouteStats
 UPGRADE_THRESHOLD_PCT = 60.0
 NEC_CITIES = {"New York City"}
 NEC_SHARE_ASSUMPTION = 0.05  # share of cost assumed to be NEC-adjacent work (e.g. Penn Station approach)
+NEC_NYC_PHL_MILES = 91  # routes via Philadelphia use the NEC main line from New York
+
+
+@lru_cache
+def _city_states() -> dict[str, str]:
+    return {c["name"]: c["state"] for c in json.loads((DATA_DIR / "cities.json").read_text(encoding="utf-8"))}
 
 
 @lru_cache
@@ -44,6 +50,11 @@ def match_route(stats: RouteStats, p50_cost: float) -> list[FundingMatch]:
     type_text = ("an upgrade of an existing rail corridor" if project_type == "upgrade"
                  else "a largely new alignment")
     touches_nec = bool(NEC_CITIES & set(stats.stations))
+    on_nec_main = touches_nec and "Philadelphia" in stats.stations
+    nec_share = min(1.0, NEC_NYC_PHL_MILES / stats.length_miles) if on_nec_main else NEC_SHARE_ASSUMPTION
+    states = sorted({_city_states()[c] for c in stats.stations if c in _city_states()})
+    multi_state = (f" The route spans {len(states)} states ({', '.join(states)}), so it needs a multi-state "
+                   "sponsor or interstate compact." if len(states) > 1 else "")
     out: list[FundingMatch] = []
 
     for p in load_programs():
@@ -59,14 +70,20 @@ def match_route(stats: RouteStats, p50_cost: float) -> list[FundingMatch]:
                 f" The P50 cost ({usd(p50_cost)}) exceeds the largest typical award ({usd(hi)}), "
                 "so the project would likely need to be phased across several awards.")
             why = (f"Core federal capital program for intercity passenger rail; this route is {type_text}. "
-                   f"Up to {p['federal_match_pct']}% federal share.{gap}")
+                   f"Up to {p['federal_match_pct']}% federal share.{gap}{multi_state}")
         elif p["id"] == "fsp_nec":
             eligible = eligible and touches_nec
             fit = 0.35 if eligible else 0.0
-            federal = min(match * NEC_SHARE_ASSUMPTION * p50_cost, hi) if eligible else 0.0
-            why = ("Route reaches New York City, so NEC-adjacent elements (assumed about "
-                   f"{NEC_SHARE_ASSUMPTION:.0%} of cost) could compete for NEC funds." if eligible else
-                   "Not eligible: the route does not use the Northeast Corridor main line.")
+            fit = 0.6 if on_nec_main else fit
+            federal = min(match * nec_share * p50_cost, hi) if eligible else 0.0
+            if on_nec_main:
+                why = (f"The route uses the Northeast Corridor main line between New York and Philadelphia "
+                       f"({NEC_NYC_PHL_MILES} miles, about {nec_share:.0%} of the route), which is eligible for NEC funds.")
+            elif eligible:
+                why = ("Route reaches New York City, so NEC-adjacent elements (assumed about "
+                       f"{NEC_SHARE_ASSUMPTION:.0%} of cost) could compete for NEC funds.")
+            else:
+                why = "Not eligible: the route does not use the Northeast Corridor main line."
         elif p["id"] == "crisi":
             fit = 0.8 if project_type == "upgrade" else 0.55
             federal = min(match * p50_cost, hi)
@@ -89,7 +106,8 @@ def match_route(stats: RouteStats, p50_cost: float) -> list[FundingMatch]:
             fit = 0.95
             federal = float(lo)
             why = (f"Planning entry point: Step 1 scoping is federally funded (about {usd(lo)}) and "
-                   "places the corridor in the pipeline FRA uses to prioritize FSP-National capital awards.")
+                   "places the corridor in the pipeline FRA uses to prioritize FSP-National capital awards."
+                   + multi_state)
         else:
             continue
 

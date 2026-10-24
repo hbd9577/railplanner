@@ -55,7 +55,7 @@ SELECT create_hypertable('simulation_runs', by_range('time', INTERVAL '7 days'),
 CREATE INDEX IF NOT EXISTS simulation_runs_route_idx ON simulation_runs (route_id, time DESC);
 
 -- Continuous aggregate serving the dashboard: counts, moments, and fixed-bin histograms.
--- Cost is binned on log10 scale from $10M (7.0) to $100B (11.0) in 1000 bins (~0.9% per bin);
+-- Cost is binned on log10 scale from $10M (7.0) to $1T (12.0) in 1000 bins (~1.2% per bin);
 -- duration in 0.5-month bins from 0 to 480 months. histogram() returns nbuckets+2 counts
 -- (index 0 = underflow, last = overflow). The API merges buckets across days and derives
 -- P10/P50/P90 by interpolating within bins, then re-bins for display.
@@ -71,7 +71,7 @@ SELECT
     min(duration_months)                       AS dur_min,
     max(duration_months)                       AS dur_max,
     avg(duration_months)                       AS dur_mean,
-    histogram(log(cost_usd), 7.0, 11.0, 1000)  AS cost_hist,
+    histogram(log(cost_usd), 7.0, 12.0, 1000)  AS cost_hist,
     histogram(duration_months, 0, 480, 960)    AS dur_hist
 FROM simulation_runs
 GROUP BY bucket, route_id

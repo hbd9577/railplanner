@@ -1,27 +1,34 @@
 {
+  "region": "New York - Chicago",
+  "lonlat_bbox": [
+    -88.6,
+    39.3,
+    -71.75,
+    45.05
+  ],
   "crs": "EPSG:5070",
   "cell_m": 1000,
   "shape": [
-    642,
-    754
+    861,
+    1469
   ],
   "transform": [
     1000.0,
     0.0,
-    1264000.0,
+    581000.0,
     0.0,
     -1000.0,
     2694000.0
   ],
   "bounds": [
-    1264000.0,
-    2052000.0,
-    2018000.0,
+    581000.0,
+    1833000.0,
+    2050000.0,
     2694000.0
   ],
-  "built_at": "2026-10-24T03:58:05+00:00",
+  "built_at": "2026-10-24T18:50:52+00:00",
   "layers": [
-    "in_ny",
+    "in_us",
     "pop",
     "elev",
     "slope_mean",
@@ -39,15 +46,15 @@
     "population": {
       "source": "Census TIGERweb 2020 tracts (POP100)",
       "flag": "real",
-      "total_rasterized": 20201248.0,
-      "total_tracts": 20201249.0
+      "total_rasterized": 90075712.0,
+      "total_tracts": 90075709.0
     },
     "rail": {
       "source": "BTS NTAD North American Rail Network Lines",
       "flag": "real",
-      "segments": 5629,
-      "active": 5481,
-      "inactive": 148
+      "segments": 56370,
+      "active": 54490,
+      "inactive": 1880
     },
     "terrain": {
       "source": "USGS 3DEP ImageServer",
@@ -58,20 +65,15 @@
       "source": "Natural Earth 10m lakes/rivers + DEM ocean mask",
       "flag": "real (coarse)"
     },
-    "env_flags": {
-      "source": "env_flags_approx.geojson",
-      "flag": "approximate (hand-digitized, demo only)",
-      "features": [
-        "Adirondack Park (approx.)",
-        "Catskill Park (approx.)",
-        "Harriman / Bear Mountain State Parks (approx.)",
-        "Montezuma wetlands complex (approx.)",
-        "Iroquois NWR / Tonawanda & Oak Orchard WMAs (approx.)",
-        "Mohawk River floodplain (approx.)",
-        "Hudson River floodplain (approx.)",
-        "Genesee River floodplain (approx.)",
-        "Seneca River / Erie Canal wetlands (approx.)"
-      ]
+    "protected_areas": {
+      "source": "USGS PAD-US 3.0 (GAP 1-2, >= 1,000 acres)",
+      "flag": "real",
+      "features": 1051,
+      "wildlife_refuges": 24
+    },
+    "floodplain": {
+      "source": "Natural Earth river corridors + env_flags_approx.geojson (NY rivers)",
+      "flag": "approximate (proxy, demo only)"
     }
   }
 }

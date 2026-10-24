@@ -4,7 +4,8 @@ Cost model (per run; all inputs from data/cost_benchmarks.csv, ILLUSTRATIVE not 
     track       sum over route segments: miles x PERT(new_track[terrain, density])
                 x PERT(upgrade_factor | reactivation_factor) for segments on existing ROW
     heavy       new mountainous miles x PERT(share) x PERT(heavy_structure $/mi)
-    grade sep   miles x PERT(rate[density]) x PERT(grade_separation $/crossing)
+    grade sep   miles x PERT(rate[density]) x PERT(grade_separation $/crossing); on existing ROW only
+                PERT(grade_separation_share_existing) of crossings are separated (the rest closed/gated)
     bridges     new crossings x PERT(bridge); crossings on existing ROW x 0.4 (rehab)
     stations    stations x PERT(station)
     total       subtotal x market factor (lognormal, sigma 0.08, shared by all items in a run)
@@ -14,9 +15,11 @@ One draw per item per run, so items move together within a run (conservative: wi
 Schedule model (months, triangular; simple critical path):
     planning/NEPA  [T(24, 36, 60) + env_flag_count x T(1, 3, 6)] x (1 - 0.35 x row_reuse_share)
                    (work inside existing ROW typically gets a lighter environmental review)
+                   + (1 - row_reuse_share) x T(12, 24, 48) right-of-way acquisition for new alignment
     design         T(18, 24, 36) x (cost / $5B)^0.25
     procurement    T(6, 12, 24), overlapping the last 25% of design
-    construction   T(36, 54, 84) x (miles / 150)^0.3 x (cost / median cost)^0.5
+    construction   k segments of ~300 mi built in parallel with staggered starts:
+                   T(36, 54, 84) x (miles / k / 150)^0.3 x (cost / median cost)^0.5 + (k - 1) x T(6, 12, 24)
 Construction duration scales with the sampled cost, so cost and schedule are positively correlated.
 """
 from __future__ import annotations
@@ -33,11 +36,12 @@ from .config import DATA_DIR
 from .models import Distribution, HistogramBin, RouteStats, SimulationSummary
 
 # Must match the continuous aggregate definition in sql/schema.sql.
-COST_LOG10_RANGE = (7.0, 11.0)  # $10M .. $100B
+COST_LOG10_RANGE = (7.0, 12.0)  # $10M .. $1T
 COST_BINS = 1000
 DUR_RANGE = (0.0, 480.0)  # months
 DUR_BINS = 960
 DISPLAY_BINS = 30
+PHASE_MILES = 300  # long corridors are built as parallel segments of about this length
 
 
 @lru_cache
@@ -81,12 +85,14 @@ def simulate(stats: RouteStats, n: int, seed: int) -> tuple[np.ndarray, np.ndarr
     if new_mountain:
         cost += new_mountain * P("heavy_structure_share", "mountainous") * P("heavy_structure", "mountainous") * M
 
-    miles_by_density: dict[str, float] = {}
-    for s in stats.segments:
-        miles_by_density[s.density] = miles_by_density.get(s.density, 0.0) + s.miles
     sep_cost = P("grade_separation") * M
-    for density, miles in miles_by_density.items():
-        cost += miles * P("grade_separation_rate", "any", density) * sep_cost
+    existing_share = P("grade_separation_share_existing")
+    rates: dict[str, np.ndarray] = {}
+    for s in stats.segments:
+        if s.density not in rates:
+            rates[s.density] = P("grade_separation_rate", "any", s.density)
+        share = 1.0 if s.treatment == "new" else existing_share
+        cost += s.miles * rates[s.density] * share * sep_cost
 
     bridge = P("bridge") * M
     cost += stats.river_crossings_new * bridge + (stats.river_crossings - stats.river_crossings_new) * 0.4 * bridge
@@ -96,10 +102,15 @@ def simulate(stats: RouteStats, n: int, seed: int) -> tuple[np.ndarray, np.ndarr
     cost *= 1 + P("contingency")
 
     tri = lambda lo, mode, hi: rng.triangular(lo, mode, hi, n)  # noqa: E731
-    nepa = (tri(24, 36, 60) + stats.env_flag_count * tri(1, 3, 6)) * (1 - 0.35 * stats.row_reuse_pct / 100)
+    row_share = stats.row_reuse_pct / 100
+    nepa = (tri(24, 36, 60) + stats.env_flag_count * tri(1, 3, 6)) * (1 - 0.35 * row_share)
+    nepa += (1 - row_share) * tri(12, 24, 48)
     design = tri(18, 24, 36) * (cost / 5e9) ** 0.25
     procurement = np.maximum(tri(6, 12, 24) - 0.25 * design, 0)
-    construction = tri(36, 54, 84) * (stats.length_miles / 150) ** 0.3 * (cost / np.median(cost)) ** 0.5
+    k = max(1, int(round(stats.length_miles / PHASE_MILES)))
+    construction = tri(36, 54, 84) * (stats.length_miles / k / 150) ** 0.3 * (cost / np.median(cost)) ** 0.5
+    if k > 1:
+        construction += (k - 1) * tri(6, 12, 24)
     duration = nepa + design + procurement + construction
     return cost, np.clip(duration, DUR_RANGE[0], DUR_RANGE[1] - 0.01)
 

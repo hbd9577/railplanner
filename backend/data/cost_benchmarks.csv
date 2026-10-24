@@ -15,6 +15,7 @@ grade_separation,any,any,usd_m_per_crossing,8,15,30,ILLUSTRATIVE. Highway-rail g
 grade_separation_rate,any,rural,crossings_per_mile,0.3,0.5,0.8,ILLUSTRATIVE. Crossings to separate per route mile.
 grade_separation_rate,any,suburban,crossings_per_mile,1.0,1.5,2.5,ILLUSTRATIVE
 grade_separation_rate,any,urban,crossings_per_mile,2.0,3.0,5.0,ILLUSTRATIVE
+grade_separation_share_existing,any,any,fraction,0.20,0.30,0.50,"ILLUSTRATIVE. On existing ROW most crossings are closed or upgraded with gates; only this share is grade-separated. New alignments separate all crossings."
 heavy_structure,mountainous,any,usd_m_per_mile,150,250,400,ILLUSTRATIVE. Tunnel/long viaduct on new mountainous alignment.
 heavy_structure_share,mountainous,any,fraction_of_miles,0.05,0.10,0.20,ILLUSTRATIVE. Share of new mountainous miles needing heavy structures.
 station,any,any,usd_m_per_station,20,40,90,ILLUSTRATIVE. New or substantially rebuilt intercity station.

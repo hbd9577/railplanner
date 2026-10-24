@@ -1,9 +1,14 @@
 """Cost grid + least-cost path + candidate route generation.
 
-The grid is the 1 km NY raster stack built by scripts/prepare_data.py (EPSG:5070, meters).
-Each strategy re-weights the same layers into a traversal-cost surface; route_through_array
-finds the cheapest 8-connected path. Later candidates are pushed away from earlier ones so the
-2-3 options are visibly distinct.
+The grid is the 1 km New York - Chicago raster stack built by scripts/prepare_data.py
+(EPSG:5070, meters). Each strategy re-weights the same layers into a traversal-cost surface;
+route_through_array finds the cheapest 8-connected path, leg by leg between any via cities.
+Later candidates are pushed away from earlier ones so the 2-3 options are visibly distinct.
+
+Long corridors use CORRIDOR_TEMPLATES: named alternatives that pass through real corridor
+cities (e.g. the Lake Shore and Pennsylvania routes for New York - Chicago), with least-cost
+routing between them. Free-form routing over ~800 miles wanders; templates keep each
+alternative on the corridor it is named for.
 
 Cost per cell (dimensionless, 1.0 = flat open rural land), built in cost_surface():
     slope       1 + w_slope * (slope% / 4)^2, capped at 25, damped 70% on existing rail ROW
@@ -13,25 +18,25 @@ Cost per cell (dimensionless, 1.0 = flat open rural land), built in cost_surface
     ROW reuse   x (1 - 0.65 w_row) on active rail, x (1 - 0.45 w_row) on inactive, floor 0.08
     population  x (1 - 0.85 * w_pop * p^2), p = log-normalized smoothed population
     length      + w_length (flat per-cell cost favoring shorter paths)
-    outside NY  x 4      water (lakes/ocean)  = 200
+    blocked     water (lakes/ocean) and non-US land (Canada) = 200
 """
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 
 import numpy as np
 from pyproj import Transformer
 from scipy.ndimage import binary_dilation, gaussian_filter
-from shapely.geometry import LineString, mapping
 import shapely
+from shapely.geometry import LineString, mapping
 from skimage.graph import route_through_array
 
 from .config import DATA_DIR
 
-GRID_NPZ = DATA_DIR / "processed" / "ny_grid.npz"
-GRID_META = DATA_DIR / "processed" / "ny_grid_meta.json"
+GRID_NPZ = DATA_DIR / "processed" / "grid.npz"
+GRID_META = DATA_DIR / "processed" / "grid_meta.json"
 METERS_PER_MILE = 1609.344
 
 _to_grid = Transformer.from_crs("EPSG:4326", "EPSG:5070", always_xy=True)
@@ -59,6 +64,8 @@ class Strategy:
     diversity: float = 1.0
     # Route through intermediate cities inside the corridor ellipse, in order along the corridor.
     via_cities: bool = False
+    # Explicit via cities (by name, in origin -> destination order); used by corridor templates.
+    via: tuple[str, ...] = ()
 
 
 # Mirrors the alternative families typical of corridor studies (e.g. NYSDOT Empire Corridor Tier 1 EIS):
@@ -74,6 +81,26 @@ STRATEGIES: list[Strategy] = [
              "Bends toward population centers to maximize riders within reach of the line.",
              Weights(slope=0.8, urban=0.0, env=1.0, row=0.5, pop=1.0), diversity=1.6, via_cities=True),
 ]
+
+_UPGRADE = Weights(slope=0.6, urban=0.4, env=0.6, row=1.35)
+
+# Named alternatives for long corridors, keyed (origin, destination); reversed pairs reverse the vias.
+CORRIDOR_TEMPLATES: dict[tuple[str, str], list[Strategy]] = {
+    ("New York City", "Chicago"): [
+        Strategy("lakeshore", "Lake Shore corridor upgrade",
+                 "Upgrades the existing water-level route (Hudson Line, Empire Corridor, Lake Erie shore) via "
+                 "Albany, Buffalo, Cleveland and Toledo, the path of Amtrak's Lake Shore Limited.",
+                 _UPGRADE, via=("Albany", "Buffalo", "Erie", "Cleveland", "Toledo", "South Bend")),
+        Strategy("keystone", "Pennsylvania corridor upgrade",
+                 "Upgrades the Northeast Corridor, Keystone Corridor and former Pennsylvania Railroad main "
+                 "lines via Philadelphia, Harrisburg, Pittsburgh and Fort Wayne across the Appalachians.",
+                 _UPGRADE, via=("Philadelphia", "Harrisburg", "Pittsburgh", "Fort Wayne")),
+        Strategy("direct", "New direct high-speed alignment",
+                 "Greenfield alignment across Pennsylvania and Ohio that minimizes distance at the cost of "
+                 "new right-of-way and mountain structures.",
+                 Weights(slope=1.0, urban=1.5, env=1.0, row=0.0, length=4.0), diversity=1.5),
+    ],
+}
 
 
 @dataclass
@@ -122,14 +149,14 @@ def cost_surface(g: Grid, w: Weights, window: tuple[slice, slice]) -> np.ndarray
     c *= np.maximum(row_mult, 0.08)
     c *= 1.0 - 0.85 * w.pop * g.pop_norm[window] ** 2
     c += w.length
-    c = np.where((L["in_ny"] == 0) & (L["water"] == 0), c * 4.0, c)
-    c = np.where(L["water"] > 0, 200.0, c)
+    c = np.where((L["water"] > 0) | (L["in_us"] == 0), 200.0, c)
     return np.maximum(c, 0.05).astype(np.float64)
 
 
-def _window(g: Grid, a: tuple[int, int], b: tuple[int, int], pad: int = 60) -> tuple[slice, slice]:
-    r0, r1 = max(min(a[0], b[0]) - pad, 0), min(max(a[0], b[0]) + pad + 1, g.shape[0])
-    c0, c1 = max(min(a[1], b[1]) - pad, 0), min(max(a[1], b[1]) + pad + 1, g.shape[1])
+def _window(shape: tuple[int, int], points: list[tuple[int, int]], pad: int = 60) -> tuple[slice, slice]:
+    rows, cols = [p[0] for p in points], [p[1] for p in points]
+    r0, r1 = max(min(rows) - pad, 0), min(max(rows) + pad + 1, shape[0])
+    c0, c1 = max(min(cols) - pad, 0), min(max(cols) + pad + 1, shape[1])
     return slice(r0, r1), slice(c0, c1)
 
 
@@ -179,40 +206,77 @@ class Candidate:
         return geom
 
 
+def _city_name_at(lonlat: tuple[float, float]) -> str | None:
+    for c in load_cities():
+        if abs(c["lon"] - lonlat[0]) < 0.01 and abs(c["lat"] - lonlat[1]) < 0.01:
+            return c["name"]
+    return None
+
+
+def template_for(origin: tuple[float, float], dest: tuple[float, float]) -> list[Strategy] | None:
+    """Corridor template for this city pair (either direction), or None for free-form strategies."""
+    pair = (_city_name_at(origin), _city_name_at(dest))
+    if pair in CORRIDOR_TEMPLATES:
+        return CORRIDOR_TEMPLATES[pair]
+    if pair[::-1] in CORRIDOR_TEMPLATES:
+        return [replace(s, via=s.via[::-1]) for s in CORRIDOR_TEMPLATES[pair[::-1]]]
+    return None
+
+
+def _route_legs(cost: np.ndarray, stops: list[tuple[int, int]], pad: int = 40) -> tuple[np.ndarray, float]:
+    """Least-cost path through stops, each leg solved on a sub-window around its endpoints."""
+    legs, total = [], 0.0
+    for p0, p1 in zip(stops[:-1], stops[1:]):
+        sub = _window(cost.shape, [p0, p1], pad)
+        off = np.array([sub[0].start, sub[1].start])
+        leg, leg_cost = route_through_array(cost[sub], tuple(np.subtract(p0, off)), tuple(np.subtract(p1, off)),
+                                            fully_connected=True, geometric=True)
+        leg = np.asarray(leg) + off
+        legs.append(leg if not legs else leg[1:])
+        total += leg_cost
+    return np.vstack(legs), total
+
+
 def generate_candidates(origin: tuple[float, float], dest: tuple[float, float],
                         n: int = 3, strategies: list[Strategy] | None = None) -> list[Candidate]:
     """origin/dest are (lon, lat). Returns up to n distinct candidates in strategy order."""
     g = load_grid()
+    strategies = (strategies or template_for(origin, dest) or STRATEGIES)[:n]
     a = _snap_to_land(g, g.rc(*origin))
     b = _snap_to_land(g, g.rc(*dest))
-    win = _window(g, a, b)
-    a_w = (a[0] - win[0].start, a[1] - win[1].start)
-    b_w = (b[0] - win[0].start, b[1] - win[1].start)
+    named = {c["name"]: c for c in load_cities()}
+    generic_vias = _via_points(g, origin, dest) if any(s.via_cities for s in strategies) else []
+    stops_full = []
+    for s in strategies:
+        if s.via:
+            vias = [_snap_to_land(g, g.rc(named[v]["lon"], named[v]["lat"])) for v in s.via]
+        else:
+            vias = generic_vias if s.via_cities else []
+        stops_full.append([a, *vias, b])
+
+    win = _window(g.shape, [p for stops in stops_full for p in stops])
+    off = (win[0].start, win[1].start)
+    to_w = lambda p: (p[0] - off[0], p[1] - off[1])  # noqa: E731
     shape_w = (win[0].stop - win[0].start, win[1].stop - win[1].start)
 
-    # Endpoint approaches and city cores are exempt from the diversity penalty so candidates can
-    # share stations while still diverging between them.
+    # Endpoint approaches, via cities and city cores are exempt from the diversity penalty so
+    # candidates can share stations while still diverging between them.
     rr, cc = np.ogrid[: shape_w[0], : shape_w[1]]
-    near_ends = ((rr - a_w[0]) ** 2 + (cc - a_w[1]) ** 2 < 12 ** 2) | ((rr - b_w[0]) ** 2 + (cc - b_w[1]) ** 2 < 12 ** 2)
-    exempt = near_ends | (g.pop_norm[win] > 0.62)
-    vias = _via_points(g, origin, dest, win)
-    for v in vias:
-        exempt |= (rr - v[0]) ** 2 + (cc - v[1]) ** 2 < 8 ** 2
+    exempt = g.pop_norm[win] > 0.62
+    for stops in stops_full:
+        for i, p in enumerate(stops):
+            r_ex = 12 if i in (0, len(stops) - 1) else 8
+            pw = to_w(p)
+            exempt |= (rr - pw[0]) ** 2 + (cc - pw[1]) ** 2 < r_ex ** 2
     used = np.zeros(shape_w, dtype=bool)
 
     out: list[Candidate] = []
-    for i, s in enumerate((strategies or STRATEGIES)[:n]):
+    for i, (s, stops) in enumerate(zip(strategies, stops_full)):
         cost = cost_surface(g, s.weights, win)
         if used.any() and s.diversity > 1.0:
             near_used = binary_dilation(used, iterations=3) & ~exempt
             cost = np.where(near_used, cost * s.diversity + (s.diversity - 1.0), cost)
-        stops = [a_w, *(vias if s.via_cities else []), b_w]
-        legs, total = [], 0.0
-        for p0, p1 in zip(stops[:-1], stops[1:]):
-            leg, leg_cost = route_through_array(cost, p0, p1, fully_connected=True, geometric=True)
-            legs.append(np.asarray(leg) if not legs else np.asarray(leg)[1:])
-            total += leg_cost
-        cells_w = np.vstack(legs)
+        cells_w, total = _route_legs(cost, [to_w(p) for p in stops])
         used[cells_w[:, 0], cells_w[:, 1]] = True
         cells = cells_w + np.array([win[0].start, win[1].start])
 
@@ -228,9 +292,9 @@ def generate_candidates(origin: tuple[float, float], dest: tuple[float, float],
 
 
 def _via_points(g: Grid, origin: tuple[float, float], dest: tuple[float, float],
-                window: tuple[slice, slice], max_offset: float = 0.15) -> list[tuple[int, int]]:
-    """Window-relative cells of known cities lying between o and d, within `max_offset` x direct
-    distance of the straight o-d line, ordered along the corridor."""
+                max_offset: float = 0.15) -> list[tuple[int, int]]:
+    """Grid cells of known cities lying between o and d, within `max_offset` x direct distance
+    of the straight o-d line, ordered along the corridor."""
     ox, oy = _to_grid.transform(*origin)
     dx, dy = _to_grid.transform(*dest)
     direct = np.hypot(dx - ox, dy - oy)
@@ -242,8 +306,7 @@ def _via_points(g: Grid, origin: tuple[float, float], dest: tuple[float, float],
         offset = abs((cx - ox) * (dy - oy) - (cy - oy) * (dx - ox)) / direct
         if min(d_o, d_d) < 15_000 or not (0 < along < direct) or offset > max_offset * direct:
             continue
-        r, col = _snap_to_land(g, g.rc(c["lon"], c["lat"]))
-        picks.append((along, (r - window[0].start, col - window[1].start)))
+        picks.append((along, _snap_to_land(g, g.rc(c["lon"], c["lat"]))))
     return [rc for _, rc in sorted(picks)]
 
 

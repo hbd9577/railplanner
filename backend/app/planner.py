@@ -28,10 +28,11 @@ def assumptions(runs: int) -> list[str]:
     return [
         "Illustrative estimates: per-mile cost benchmarks are placeholders bracketed by publicly reported "
         "US rail projects, not calibrated engineering estimates.",
-        "Environmental flags (protected land, wetlands, floodplains) use approximate hand-digitized outlines "
-        "for demonstration, not authoritative boundaries.",
+        "Protected areas and wildlife refuges come from USGS PAD-US (GAP status 1-2); floodplains are an "
+        "approximate proxy (river corridors plus hand-digitized outlines), not FEMA flood maps.",
         f"Population served counts 2020 Census residents within {BUFFER_MILES:.0f} miles of the alignment.",
-        "Alignments are conceptual paths on a 1 km grid, not engineered designs.",
+        "Alignments are conceptual paths on a 1 km grid, not engineered designs. Long corridors follow named "
+        "alternatives through real corridor cities, with least-cost routing between them.",
         f"Cost and schedule come from {runs} Monte Carlo runs per route; P10/P50/P90 are read from "
         "TimescaleDB continuous-aggregate histograms (about 1% bin resolution).",
         "Funding program parameters are approximate and change with each funding round.",
@@ -187,7 +188,8 @@ def load_plan(request_id: int) -> PlanResult | None:
 
 # (origin, destination) by city name. Precomputed by scripts/precompute_demo.py into Tiger and
 # into committed JSON (data/demo_cache/) that serves the demo even when the DB is unreachable.
-DEMO_PAIRS = [("Albany", "Buffalo"), ("Albany", "New York City"), ("Syracuse", "Rochester")]
+DEMO_PAIRS = [("New York City", "Chicago"), ("Albany", "Buffalo"), ("Albany", "New York City"),
+              ("Syracuse", "Rochester")]
 DEMO_DIR = DATA_DIR / "demo_cache"
 
 

@@ -141,6 +141,20 @@ def seed_cities(conn: psycopg.Connection) -> int:
     return len(cities)
 
 
+# Bump when the route_sim_stats definition changes; migrate() drops and recreates an older view.
+# Raw runs live in the simulation_runs hypertable, so recreating the aggregate loses nothing.
+CAGG_VERSION = "cost_log10_7_12_v2"
+
+
+def _reset_stale_cagg(conn: psycopg.Connection) -> None:
+    row = conn.execute(
+        "SELECT obj_description('route_sim_stats'::regclass, 'pg_class') AS v "
+        "WHERE to_regclass('route_sim_stats') IS NOT NULL").fetchone()
+    if row is not None and row["v"] != CAGG_VERSION:
+        print(f"  dropping route_sim_stats (version {row['v']!r} != {CAGG_VERSION!r})")
+        conn.execute("DROP MATERIALIZED VIEW route_sim_stats")
+
+
 def migrate() -> dict:
     """Apply schema.sql, then PostGIS add-ons when available, then seed cities."""
     with connection() as conn:
@@ -149,7 +163,9 @@ def migrate() -> dict:
             raise RuntimeError("timescaledb extension is required (Tiger Data services have it)")
         has_postgis = _try_extension(conn, "postgis")
 
+        _reset_stale_cagg(conn)
         _apply_file(conn, "schema.sql")
+        conn.execute(f"COMMENT ON VIEW route_sim_stats IS '{CAGG_VERSION}'")
         if has_postgis:
             _apply_file(conn, "schema_postgis.sql")
         else:

@@ -13,7 +13,7 @@ def test_grid_layers_consistent():
     g = load_grid()
     for name, arr in g.layers.items():
         assert arr.shape == g.shape, name
-    assert 19e6 < g.layers["pop"].sum() < 21.5e6  # NY 2020 census ~20.2M
+    assert 50e6 < g.layers["pop"].sum() < 120e6  # NY-Chicago region incl. NJ/PA/OH/IN/N. IL/S. MI
     assert g.layers["row_active"].sum() > 1000
     assert 0 <= g.layers["slope_mean"].min() and g.layers["slope_mean"].max() < 100
 
@@ -63,3 +63,35 @@ def test_candidates_visibly_distinct(albany_buffalo):
         for b in cands[i + 1:]:
             shared = near[b.cells[:, 0], b.cells[:, 1]].mean()
             assert shared < 0.75, (a.key, b.key, shared)
+
+
+@pytest.fixture(scope="module")
+def nyc_chicago():
+    t0 = time.perf_counter()
+    cands = generate_candidates(CITIES["New York City"], CITIES["Chicago"])
+    return cands, time.perf_counter() - t0
+
+
+def test_nyc_chicago_template_alternatives(nyc_chicago):
+    cands, elapsed = nyc_chicago
+    assert [c.key for c in cands] == ["lakeshore", "keystone", "direct"]
+    assert elapsed < 30
+    by = {c.key: c for c in cands}
+    # Straight line ~713 mi; Lake Shore Limited ~960 mi; Pennsylvania routing ~900 mi.
+    assert 850 < by["lakeshore"].length_miles < 1050
+    assert 780 < by["keystone"].length_miles < 1000
+    assert 700 < by["direct"].length_miles < by["keystone"].length_miles
+
+
+def test_nyc_chicago_passes_corridor_cities(nyc_chicago):
+    from app.scoring import route_metrics
+    cands, _ = nyc_chicago
+    by = {c.key: route_metrics(c)["stations"] for c in cands}
+    assert {"Albany", "Buffalo", "Cleveland", "Toledo"} <= set(by["lakeshore"])
+    assert {"Philadelphia", "Harrisburg", "Pittsburgh"} <= set(by["keystone"])
+
+
+def test_routes_stay_in_us(nyc_chicago):
+    g = load_grid()
+    for c in nyc_chicago[0]:
+        assert (g.layers["in_us"][c.cells[:, 0], c.cells[:, 1]] > 0).mean() > 0.99, c.key
