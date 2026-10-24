@@ -8,7 +8,7 @@ import ProposalPanel from "./components/ProposalPanel";
 import RangeCompare from "./components/RangeCompare";
 import RouteCards from "./components/RouteCards";
 import Summary from "./components/Summary";
-import { PALETTE, badgeStyle, months, routeColor, usd, years } from "./format";
+import { PALETTE, badgeStyle, months, usd, years } from "./format";
 
 function Num({ i, rank, selected }: { i: number; rank: number; selected: number }) {
   return (
@@ -95,23 +95,28 @@ export default function App() {
         </div>
       </header>
 
-      <main className="app">
-        <p className="caveat">
-          <strong>Illustrative estimates.</strong> Cost benchmarks are not calibrated. Ranges express modeled
-          uncertainty, not a budget or an engineering estimate.
-        </p>
+      {/* Full-width map hero; controls float over its left edge on a semi-transparent gradient. */}
+      <section className="hero" aria-label="Corridor map">
+        <div className="hero-map">
+          <MapView
+            cities={cities}
+            plan={plan}
+            originId={originId}
+            destId={destId}
+            selected={selected}
+            animate={animate}
+            replayKey={replayKey}
+            onCityClick={onCityClick}
+            onRouteClick={setSelected}
+          />
+          {loading && <div className="map-loading">Generating routes and running simulations…</div>}
+        </div>
 
-        {error && (
-          <div className="notice" role="alert">
-            {error}
-          </div>
-        )}
-
-        <section className="top">
-          <aside className="side">
-            <div className="block">
+        <div className="hero-overlay">
+          <div className="hero-panel">
+            <div className="ov-block">
               <h2>Corridor</h2>
-              <p className="note">Choose an origin and a destination, or pick two cities on the map.</p>
+              <p className="ov-note">Choose an origin and a destination, or pick two cities on the map.</p>
               <div className="selects">
                 <label>
                   From
@@ -142,6 +147,7 @@ export default function App() {
                 </button>
                 {planMatches && (
                   <button
+                    className="ghost"
                     disabled={loading != null}
                     onClick={() => runPlan(originId!, destId!, true)}
                     title="Recompute routes and all simulations"
@@ -150,44 +156,27 @@ export default function App() {
                   </button>
                 )}
               </div>
+              {error && (
+                <div className="notice" role="alert">
+                  {error}
+                </div>
+              )}
             </div>
 
             {plan && (
-              <div className="block">
-                <h2>Summary</h2>
-                <Summary plan={plan} selected={selected} onSelect={setSelected} />
-              </div>
-            )}
-          </aside>
-
-          <figure className="map-frame">
-            <MapView
-              cities={cities}
-              plan={plan}
-              originId={originId}
-              destId={destId}
-              selected={selected}
-              animate={animate}
-              replayKey={replayKey}
-              onCityClick={onCityClick}
-              onRouteClick={setSelected}
-            />
-            {loading && (
-              <div className="map-loading">
-                Generating routes and running simulations…
-              </div>
-            )}
-            {plan && (
-              <div className="legend">
-                {plan.routes.map((r, i) => (
-                  <button key={r.key} className={i === selected ? "on" : ""} onClick={() => setSelected(i)}>
-                    <span className="line" style={{ background: routeColor(i, selected) }} />
-                    <span>
-                      {r.rank}. {r.label}
-                    </span>
-                    <span className="dim">{r.stats.length_miles.toFixed(0)} mi</span>
-                  </button>
-                ))}
+              <div className="ov-block">
+                <h2>Routes</h2>
+                <div className="ov-routes">
+                  {plan.routes.map((r, i) => (
+                    <button key={r.key} className={i === selected ? "on" : ""} onClick={() => setSelected(i)}>
+                      <span className="num" style={badgeStyle(i, selected)}>
+                        {r.rank}
+                      </span>
+                      <span>{r.label}</span>
+                      <span className="mi">{r.stats.length_miles.toFixed(0)} mi</span>
+                    </button>
+                  ))}
+                </div>
                 <div className="anim-row">
                   <label className="anim-toggle">
                     <input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
@@ -201,9 +190,23 @@ export default function App() {
                 </div>
               </div>
             )}
-          </figure>
-        </section>
 
+            {plan && (
+              <div className="ov-block">
+                <h2>Summary</h2>
+                <Summary plan={plan} selected={selected} onSelect={setSelected} />
+              </div>
+            )}
+
+            <p className="caveat">
+              <strong>Illustrative estimates.</strong> Cost benchmarks are not calibrated. Ranges express modeled
+              uncertainty, not a budget or an engineering estimate.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <main className="app">
         {plan && route && (
           <>
             <section className="sect">

@@ -1,6 +1,6 @@
 import { Fragment, useEffect } from "react";
 import L from "leaflet";
-import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
+import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, ZoomControl, useMap } from "react-leaflet";
 import type { City, PlanResult } from "../api";
 import { PALETTE } from "../format";
 import P5Overlay from "./P5Overlay";
@@ -19,6 +19,7 @@ interface Props {
 
 const toLatLng = (coords: [number, number][]) => coords.map(([lon, lat]) => [lat, lon] as [number, number]);
 const CASING = "#2b2118"; // dark brown edge keeps lines legible over imagery
+const OVERLAY_WIDTH = 440; // matches .hero-overlay width in styles.css
 
 function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }) {
   const map = useMap();
@@ -26,8 +27,10 @@ function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }
     const pts = plan
       ? plan.routes.flatMap((r) => toLatLng(r.geometry.coordinates))
       : cities.map((c) => [c.lat, c.lon] as [number, number]);
-    // keep routes clear of the legend panel in the top-right corner
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [30, 140], paddingBottomRight: [30, 30] });
+    // On wide screens the control panel overlays the map's left edge, so keep routes to its right.
+    const wide = map.getContainer().clientWidth >= 860;
+    const pad = wide ? { paddingTopLeft: [OVERLAY_WIDTH + 40, 50], paddingBottomRight: [60, 50] } : { padding: [16, 36] };
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), pad as L.FitBoundsOptions);
   }, [plan, cities, map]);
   return null;
 }
@@ -49,7 +52,8 @@ export default function MapView(props: Props) {
   const order = plan ? plan.routes.map((_, i) => i).sort((a, b) => (a === selected ? 1 : b === selected ? -1 : a - b)) : [];
 
   return (
-    <MapContainer className="map" center={[41.8, -79.5]} zoom={6} minZoom={4} scrollWheelZoom={false}>
+    <MapContainer className="map" center={[41.8, -79.5]} zoom={6} minZoom={4} scrollWheelZoom={false} zoomControl={false}>
+      <ZoomControl position="topright" />
       <TileLayer
         attribution="Imagery &copy; Esri, Maxar, Earthstar Geographics, and the GIS user community"
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
