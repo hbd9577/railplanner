@@ -1,6 +1,6 @@
 # RailPlanner
 
-Decision support for planning new US passenger rail corridors (SBUHacks MVP).
+Decision support for planning new US passenger rail corridors. Built for SBUHacks2026.
 Pick two cities, get 2-3 candidate routes, Monte Carlo cost/schedule ranges, funding matches, and an AI-drafted proposal.
 
 > **Illustrative estimates.** Cost benchmarks are not calibrated; outputs are for demonstration only.
