@@ -10,6 +10,10 @@ import RouteCards from "./components/RouteCards";
 import Summary from "./components/Summary";
 import { PALETTE, badgeStyle, months, usd, years } from "./format";
 
+function coord(lat: number, lon: number): string {
+  return `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(4)}°${lon >= 0 ? "E" : "W"}`;
+}
+
 function Num({ i, rank, selected }: { i: number; rank: number; selected: number }) {
   return (
     <span className="num" style={badgeStyle(i, selected)}>
@@ -80,16 +84,21 @@ export default function App() {
       <header className="masthead">
         <div className="masthead-inner">
           <div>
-            <div className="wordmark">RailPlanner</div>
+            <h1 className="wordmark">
+              Rail<b>Planner</b>
+            </h1>
             <div className="dek">Corridor alternatives, cost and schedule ranges, and federal funding fit</div>
           </div>
           {plan && route && (
             <div className="provenance">
-              {route.simulation.source === "tiger_cagg" ? "Results from Tiger Data" : "Results computed locally"}
-              {" · "}
-              {route.simulation.runs.toLocaleString()} simulations per alternative
-              {" · "}
-              {plan.cached ? "stored run" : "new run"}
+              <span>
+                {route.simulation.source === "tiger_cagg" ? "Results from Tiger Data" : "Results computed locally"}
+                {" · "}
+                {route.simulation.runs.toLocaleString()} simulations per alternative
+              </span>
+              <span className="coords">
+                {coord(plan.origin.lat, plan.origin.lon)} → {coord(plan.destination.lat, plan.destination.lon)}
+              </span>
             </div>
           )}
         </div>
@@ -255,14 +264,14 @@ export default function App() {
                 <DistributionChart
                   title="Capital cost"
                   dist={route.simulation.cost}
-                  color={PALETTE.brown}
+                  color={PALETTE.gold}
                   format={usd}
                   runs={route.simulation.runs}
                 />
                 <DistributionChart
                   title="Time to opening"
                   dist={route.simulation.duration}
-                  color={PALETTE.brown}
+                  color={PALETTE.gold}
                   format={months}
                   runs={route.simulation.runs}
                 />

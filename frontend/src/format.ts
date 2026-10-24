@@ -4,21 +4,21 @@ import type { CSSProperties } from "react";
 // carries color; the others are greyed out, so identity comes from the route number and name.
 export const PALETTE = {
   yellow: "#f2b632", // gold: active corridor on the satellite map
-  gold: "#e8a91c",
+  gold: "#e8a91c", // active corridor in charts and tables on the dark page
   tan: "#e6cf98",
-  brown: "#7b4a1e", // active corridor in charts and tables (readable on cream)
-  grey: "#bfae8c", // inactive corridors in charts and tables
+  brown: "#7b4a1e",
+  grey: "#6f6150", // inactive corridors in charts and tables
   mapGrey: "#efe6d2", // inactive corridors on the satellite map
 };
 
-/** Fill for bars and marks: brown when active, grey otherwise. */
+/** Fill for bars and marks: gold when active, muted brown-grey otherwise. */
 export function routeColor(i: number, selected: number): string {
-  return i === selected ? PALETTE.brown : PALETTE.grey;
+  return i === selected ? PALETTE.gold : PALETTE.grey;
 }
 
-/** Number badge colors: gold with dark text when active, pale tan with dark text otherwise. */
+/** Number badge colors: gold with dark text when active, dark brown with cream text otherwise. */
 export function badgeStyle(i: number, selected: number): CSSProperties {
-  return i === selected ? { background: PALETTE.gold, color: "#251a09" } : { background: "#eadcb8", color: "#251a09" };
+  return i === selected ? { background: PALETTE.gold, color: "#221910" } : { background: "#3d3124", color: "#f3e7c9" };
 }
 
 export function usd(x: number): string {

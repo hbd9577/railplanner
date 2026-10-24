@@ -46,18 +46,18 @@ export default function DistributionChart({ title, dist, color, format, runs }: 
       </figcaption>
       <ResponsiveContainer width="100%" height={210}>
         <BarChart data={data} margin={{ top: 22, right: 12, bottom: 0, left: 12 }} barCategoryGap="18%">
-          <CartesianGrid vertical={false} stroke="#ebe9e3" />
+          <CartesianGrid vertical={false} stroke="rgba(243, 231, 201, 0.10)" />
           <XAxis
             dataKey="key"
             tickFormatter={(k) => format(data[Number(k)]?.lo ?? 0)}
             interval={Math.max(0, Math.floor(data.length / 5) - 1)}
-            tick={{ fontSize: 11, fill: "#52514e" }}
+            tick={{ fontSize: 11, fill: "#9f8e72", fontFamily: "IBM Plex Mono" }}
             tickLine={false}
-            axisLine={{ stroke: "#c3c2b7" }}
+            axisLine={{ stroke: "rgba(243, 231, 201, 0.3)" }}
           />
           <YAxis hide />
           <Tooltip
-            cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
+            cursor={{ fill: "rgba(243, 231, 201, 0.05)" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as Datum;
@@ -78,7 +78,7 @@ export default function DistributionChart({ title, dist, color, format, runs }: 
             dataKey="count"
             fill={color}
             fillOpacity={0.85}
-            radius={[3, 3, 0, 0]}
+            radius={[1, 1, 0, 0]}
             activeBar={{ fillOpacity: 1 }}
             isAnimationActive={false}
           />
@@ -86,10 +86,10 @@ export default function DistributionChart({ title, dist, color, format, runs }: 
             <ReferenceLine
               key={m.p}
               x={binOf(values[m.p])}
-              stroke="#1f1f1d"
+              stroke="#f3e7c9"
               strokeDasharray={m.p === "P50" ? undefined : "4 3"}
               strokeWidth={m.p === "P50" ? 2 : 1.25}
-              label={{ value: m.p, position: m.pos, fontSize: 11, fill: "#1f1f1d" }}
+              label={{ value: m.p, position: m.pos, fontSize: 11, fill: "#f3e7c9" }}
             />
           ))}
         </BarChart>

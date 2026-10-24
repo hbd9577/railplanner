@@ -167,7 +167,7 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
           const w = p.textWidth(text) + 14;
           p.noStroke();
           p.fill(bg);
-          p.rect(x, y, w, 22, 3);
+          p.rect(x, y, w, 22, 1);
           p.fill(fg);
           p.textAlign(p.LEFT, p.CENTER);
           p.text(text, x + 7, y + 11);
@@ -177,7 +177,7 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
           const size = map.getSize();
           p.createCanvas(size.x, size.y).parent(host);
           p.frameRate(60);
-          p.textFont("Oswald");
+          p.textFont("Jost");
           project();
         };
 
