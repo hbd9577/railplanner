@@ -27,6 +27,7 @@ export default function App() {
   const [selected, setSelected] = useState(0);
   const [loading, setLoading] = useState<"boot" | "plan" | null>("boot");
   const [error, setError] = useState<string | null>(null);
+  const [animate, setAnimate] = useState(true);
 
   useEffect(() => {
     Promise.all([api.cities(), api.demoPairs()])
@@ -178,6 +179,7 @@ export default function App() {
               originId={originId}
               destId={destId}
               selected={selected}
+              animate={animate}
               onCityClick={onCityClick}
               onRouteClick={setSelected}
             />
@@ -197,6 +199,10 @@ export default function App() {
                     <span className="dim">{r.stats.length_miles.toFixed(0)} mi</span>
                   </button>
                 ))}
+                <label className="anim-toggle">
+                  <input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
+                  Animate trains (same speed on every route)
+                </label>
               </div>
             )}
           </figure>

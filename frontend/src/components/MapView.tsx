@@ -3,6 +3,7 @@ import L from "leaflet";
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { City, PlanResult } from "../api";
 import { ROUTE_COLORS } from "../format";
+import P5Overlay from "./P5Overlay";
 
 interface Props {
   cities: City[];
@@ -10,6 +11,7 @@ interface Props {
   originId: number | null;
   destId: number | null;
   selected: number;
+  animate: boolean;
   onCityClick: (id: number) => void;
   onRouteClick: (idx: number) => void;
 }
@@ -38,7 +40,7 @@ function routeBadge(rank: number, color: string) {
   });
 }
 
-export default function MapView({ cities, plan, originId, destId, selected, onCityClick, onRouteClick }: Props) {
+export default function MapView({ cities, plan, originId, destId, selected, animate, onCityClick, onRouteClick }: Props) {
   return (
     <MapContainer className="map" center={[41.8, -79.5]} zoom={6} minZoom={4} scrollWheelZoom={false}>
       <TileLayer
@@ -47,6 +49,7 @@ export default function MapView({ cities, plan, originId, destId, selected, onCi
         maxZoom={16}
       />
       <FitToPlan plan={plan} cities={cities} />
+      <P5Overlay plan={plan} cities={cities} selected={selected} enabled={animate} />
 
       {plan?.routes.map((r, i) => {
         const pts = toLatLng(r.geometry.coordinates);

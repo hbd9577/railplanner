@@ -108,6 +108,11 @@ button.link { border: none; background: none; padding: 0; font-size: inherit; te
   color: #fff; font-weight: 600; font-size: 11px; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
 }
 .city-tip-strong { font-weight: 600; }
+/* p5 canvas: above route lines (overlay pane 400), below markers (600) and tooltips */
+.p5-overlay { position: absolute; inset: 0; z-index: 450; pointer-events: none; }
+.p5-overlay canvas { pointer-events: none; display: block; }
+.anim-toggle { display: flex; align-items: center; gap: 6px; padding: 6px 10px 4px; margin-top: 2px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-2); cursor: pointer; }
+.anim-toggle input { margin: 0; }
 
 /* ---------- sections ---------- */
 .sect { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--rule-strong); }
