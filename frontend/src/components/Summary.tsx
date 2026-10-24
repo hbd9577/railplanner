@@ -1,5 +1,5 @@
 import type { PlanResult, RouteResult } from "../api";
-import { ROUTE_COLORS, people, usd, years } from "../format";
+import { badgeStyle, people, usd, years } from "../format";
 
 interface Leader {
   idx: number;
@@ -12,7 +12,7 @@ function leader(routes: RouteResult[], pick: (r: RouteResult) => number, best: "
 }
 
 // A short written read-out of the results, built only from computed values.
-export default function Summary({ plan, onSelect }: { plan: PlanResult; onSelect: (i: number) => void }) {
+export default function Summary({ plan, selected, onSelect }: { plan: PlanResult; selected: number; onSelect: (i: number) => void }) {
   const r = plan.routes;
   const facts: Leader[] = [
     { idx: leader(r, (x) => x.stats.score, "max"), clause: "" },
@@ -40,7 +40,7 @@ export default function Summary({ plan, onSelect }: { plan: PlanResult; onSelect
       {[...byRoute.entries()].map(([i, clauses]) => (
         <p key={i}>
           <button className="inline-route" onClick={() => onSelect(i)}>
-            <span className="num" style={{ background: ROUTE_COLORS[i] }}>
+            <span className="num" style={badgeStyle(i, selected)}>
               {r[i].rank}
             </span>
             {r[i].label}

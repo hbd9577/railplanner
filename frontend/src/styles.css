@@ -1,16 +1,20 @@
 /* Restrained, report-like styling: hairline rules instead of boxes, one serif for headings and
    headline figures, a plain sans for everything else, color reserved for the routes. */
 :root {
-  --paper: #fbfaf7;
+  /* yellow / tan / brown */
+  --paper: #f7f2e9;
   --white: #ffffff;
-  --ink: #1f1f1d;
-  --ink-2: #5b5a55;
-  --ink-3: #8a8881;
-  --rule: #e4e1d9;
-  --rule-strong: #cfcbc0;
-  --tint: #f3f1ec;
-  --link: #1f5fae;
-  --caveat: #8a5a00;
+  --ink: #2b2118;
+  --ink-2: #5b4a3a;
+  --ink-3: #7d6c58;
+  --rule: #e4d9c6;
+  --rule-strong: #ccb999;
+  --tint: #efe6d6;
+  --link: #7a4e2d;
+  --caveat: #7a4e2d;
+  --yellow: #f2c12e;
+  --tan: #d9c4a0;
+  --brown: #7a4e2d;
   --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
   --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   font-family: var(--sans);
@@ -46,7 +50,7 @@ a, button.link { color: var(--link); }
 .provenance { color: var(--ink-2); font-size: 12.5px; }
 
 .app { max-width: 1360px; margin: 0 auto; padding: 14px 24px 56px; }
-.caveat { margin: 0 0 16px; padding-left: 10px; border-left: 3px solid #d9a441; color: var(--caveat); font-size: 13px; }
+.caveat { margin: 0 0 16px; padding-left: 10px; border-left: 3px solid var(--yellow); color: var(--caveat); font-size: 13px; }
 .caveat strong { font-weight: 600; }
 .notice { border-left: 3px solid #b3261e; padding: 6px 10px; background: #fbeceb; margin-bottom: 14px; }
 
@@ -64,8 +68,8 @@ select, input {
 .row { display: flex; gap: 8px; align-items: center; }
 button { border: 1px solid var(--rule-strong); background: var(--white); border-radius: 3px; padding: 6px 12px; }
 button:hover:not(:disabled) { border-color: var(--ink-3); }
-button.primary { background: var(--ink); border-color: var(--ink); color: var(--white); }
-button.primary:hover:not(:disabled) { background: #3a3a37; }
+button.primary { background: var(--brown); border-color: var(--brown); color: var(--white); }
+button.primary:hover:not(:disabled) { background: #5f3c22; }
 button.link { border: none; background: none; padding: 0; font-size: inherit; text-decoration: underline; text-underline-offset: 2px; }
 
 .summary p { margin: 0 0 8px; color: var(--ink-2); }
@@ -95,6 +99,7 @@ button.link { border: none; background: none; padding: 0; font-size: inherit; te
   border: none; background: none; padding: 4px 10px; text-align: left; font-size: 12.5px; border-radius: 0;
 }
 .legend button.on { background: var(--tint); font-weight: 600; }
+.route-badge.active { box-shadow: 0 0 0 2px #2b2118; }
 .legend .line { display: block; height: 3px; border-radius: 0; }
 .route-badge-wrap { background: none; border: none; }
 .route-badge {
@@ -105,6 +110,8 @@ button.link { border: none; background: none; padding: 0; font-size: inherit; te
 /* p5 canvas: above route lines (overlay pane 400), below markers (600) and tooltips */
 .p5-overlay { position: absolute; inset: 0; z-index: 450; pointer-events: none; }
 .p5-overlay canvas { pointer-events: none; display: block; }
+.anim-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--rule); margin-top: 2px; padding-right: 10px; }
+.anim-row .anim-toggle { border-top: none; margin-top: 0; }
 .anim-toggle { display: flex; align-items: center; gap: 6px; padding: 6px 10px 4px; margin-top: 2px; border-top: 1px solid var(--rule); font-size: 12px; color: var(--ink-2); cursor: pointer; }
 .anim-toggle input { margin: 0; }
 

@@ -8,11 +8,11 @@ import ProposalPanel from "./components/ProposalPanel";
 import RangeCompare from "./components/RangeCompare";
 import RouteCards from "./components/RouteCards";
 import Summary from "./components/Summary";
-import { ROUTE_COLORS, months, usd, years } from "./format";
+import { PALETTE, badgeStyle, months, routeColor, usd, years } from "./format";
 
-function Num({ i, rank }: { i: number; rank: number }) {
+function Num({ i, rank, selected }: { i: number; rank: number; selected: number }) {
   return (
-    <span className="num" style={{ background: ROUTE_COLORS[i] }}>
+    <span className="num" style={badgeStyle(i, selected)}>
       {rank}
     </span>
   );
@@ -27,6 +27,7 @@ export default function App() {
   const [loading, setLoading] = useState<"plan" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [animate, setAnimate] = useState(true);
+  const [replayKey, setReplayKey] = useState(0);
 
   useEffect(() => {
     api
@@ -154,7 +155,7 @@ export default function App() {
             {plan && (
               <div className="block">
                 <h2>Summary</h2>
-                <Summary plan={plan} onSelect={setSelected} />
+                <Summary plan={plan} selected={selected} onSelect={setSelected} />
               </div>
             )}
           </aside>
@@ -167,6 +168,7 @@ export default function App() {
               destId={destId}
               selected={selected}
               animate={animate}
+              replayKey={replayKey}
               onCityClick={onCityClick}
               onRouteClick={setSelected}
             />
@@ -179,17 +181,24 @@ export default function App() {
               <div className="legend">
                 {plan.routes.map((r, i) => (
                   <button key={r.key} className={i === selected ? "on" : ""} onClick={() => setSelected(i)}>
-                    <span className="line" style={{ background: ROUTE_COLORS[i] }} />
+                    <span className="line" style={{ background: routeColor(i, selected) }} />
                     <span>
                       {r.rank}. {r.label}
                     </span>
                     <span className="dim">{r.stats.length_miles.toFixed(0)} mi</span>
                   </button>
                 ))}
-                <label className="anim-toggle">
-                  <input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
-                  Animate trains (same speed on every route)
-                </label>
+                <div className="anim-row">
+                  <label className="anim-toggle">
+                    <input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
+                    Animate construction
+                  </label>
+                  {animate && (
+                    <button className="link" onClick={() => setReplayKey((k) => k + 1)}>
+                      Replay build
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </figure>
@@ -237,20 +246,20 @@ export default function App() {
                 />
               </div>
               <h3 className="subhead">
-                <Num i={selected} rank={route.rank} /> {route.label}: distribution of runs
+                <Num i={selected} rank={route.rank} selected={selected} /> {route.label}: distribution of runs
               </h3>
               <div className="charts">
                 <DistributionChart
                   title="Capital cost"
                   dist={route.simulation.cost}
-                  color={ROUTE_COLORS[selected]}
+                  color={PALETTE.brown}
                   format={usd}
                   runs={route.simulation.runs}
                 />
                 <DistributionChart
                   title="Time to opening"
                   dist={route.simulation.duration}
-                  color={ROUTE_COLORS[selected]}
+                  color={PALETTE.brown}
                   format={months}
                   runs={route.simulation.runs}
                 />
@@ -282,7 +291,7 @@ export default function App() {
                 <div className="sect-head">
                   <h2>Funding programs</h2>
                   <span className="note">
-                    For <Num i={selected} rank={route.rank} /> {route.label}. Select a row for the rationale.
+                    For <Num i={selected} rank={route.rank} selected={selected} /> {route.label}. Select a row for the rationale.
                   </span>
                 </div>
                 <FundingPanel matches={route.funding} basis={route.simulation.cost.p50} />

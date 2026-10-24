@@ -2,45 +2,61 @@ import { useEffect, useRef } from "react";
 import type p5 from "p5";
 import { useMap } from "react-leaflet";
 import type { City, PlanResult } from "../api";
-import { ROUTE_COLORS } from "../format";
+import { PALETTE } from "../format";
 
 interface Props {
   plan: PlanResult | null;
   cities: City[];
   selected: number;
   enabled: boolean;
+  replayKey: number;
 }
 
-interface Projected {
-  pts: { x: number; y: number }[];
+interface Pt {
+  x: number;
+  y: number;
+}
+
+interface Built {
+  pts: Pt[];
   cum: number[]; // cumulative pixel distance along pts
+  total: number; // pixels
   miles: number;
-  color: string;
+  ties: { at: number; x: number; y: number; nx: number; ny: number }[];
+  markers: { at: number; mile: number; x: number; y: number; nx: number; ny: number }[];
+  stations: { at: number; x: number; y: number }[];
 }
 
-// All trains run at the same real-world speed, so the shortest alternative arrives first.
-const LONGEST_RUN_MS = 6500;
-const DWELL_MS = 1400;
-const TRAIL_MILES_FRAC = 0.035;
+const CASING = "#2b2118";
+const TIE = "#5a3a1f";
+const TIE_SPACING_PX = 7;
+const MILES_PER_SECOND = 130;
+const MIN_MS = 3500;
+const MAX_MS = 8500;
+const DONE_HOLD_MS = 2500;
+
+function markerStep(miles: number): number {
+  return [10, 25, 50, 100, 200].find((s) => miles / s <= 9) ?? 250;
+}
 
 /**
- * A p5.js canvas laid over the Leaflet map (between the route lines and the markers).
- * It never takes pointer events, so Leaflet keeps handling clicks, hover and tooltips.
- * Geometry is re-projected to screen pixels whenever the map moves; the canvas hides
- * during Leaflet's CSS zoom animation and redraws when it settles.
+ * Construction animation on a p5.js canvas laid over the Leaflet map: the active corridor's
+ * track is laid mile by mile at a constant pace, with ties, mile markers, a running mile count
+ * at the work head, and stations marked as the build reaches them. The canvas never takes
+ * pointer events; geometry is re-projected whenever the map moves and the canvas hides
+ * during Leaflet's CSS zoom animation. With prefers-reduced-motion the finished track is drawn.
  */
-export default function P5Overlay({ plan, cities, selected, enabled }: Props) {
+export default function P5Overlay({ plan, cities, selected, enabled, replayKey }: Props) {
   const map = useMap();
-  const state = useRef({ plan, cities, selected, routes: [] as Projected[], stations: [] as { x: number; y: number; r: number }[] });
-  const reproject = useRef<() => void>(() => {});
+  const state = useRef({ plan, cities, selected, built: null as Built | null });
+  const restart = useRef<() => void>(() => {});
 
-  // Keep the sketch's view of props current without recreating it.
   useEffect(() => {
     state.current.plan = plan;
     state.current.cities = cities;
     state.current.selected = selected;
-    reproject.current();
-  }, [plan, cities, selected]);
+    restart.current();
+  }, [plan, cities, selected, replayKey]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -52,53 +68,69 @@ export default function P5Overlay({ plan, cities, selected, enabled }: Props) {
 
     let instance: p5 | null = null;
     let cancelled = false;
-    let cycleStart = performance.now();
+    let start = performance.now();
 
     function project() {
       const s = state.current;
-      if (!s.plan) {
-        s.routes = [];
-        s.stations = [];
+      const r = s.plan?.routes[s.selected];
+      if (!r) {
+        s.built = null;
         return;
       }
-      s.routes = s.plan.routes.map((r, i) => {
-        const pts = r.geometry.coordinates.map(([lon, lat]) => map.latLngToContainerPoint([lat, lon]));
-        const cum = [0];
-        for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + pts[k].distanceTo(pts[k - 1]));
-        return { pts: pts.map((p) => ({ x: p.x, y: p.y })), cum, miles: r.stats.length_miles, color: ROUTE_COLORS[i] };
-      });
-      const served = new Set(s.plan.routes[s.selected]?.stats.stations ?? []);
-      s.stations = s.cities
+      const pts = r.geometry.coordinates.map(([lon, lat]) => map.latLngToContainerPoint([lat, lon]));
+      const cum = [0];
+      for (let k = 1; k < pts.length; k++) cum.push(cum[k - 1] + pts[k].distanceTo(pts[k - 1]));
+      const total = cum[cum.length - 1] || 1;
+      const at = (d: number) => {
+        let k = 1;
+        while (k < cum.length - 1 && cum[k] < d) k++;
+        const seg = cum[k] - cum[k - 1] || 1;
+        const t = (d - cum[k - 1]) / seg;
+        const a = pts[k - 1];
+        const b = pts[k];
+        const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, nx: -(b.y - a.y) / len, ny: (b.x - a.x) / len };
+      };
+      const ties = [];
+      for (let d = 0; d <= total; d += TIE_SPACING_PX) ties.push({ at: d, ...at(d) });
+      const miles = r.stats.length_miles;
+      const step = markerStep(miles);
+      const markers = [];
+      for (let m = step; m < miles - step * 0.4; m += step) {
+        const d = (m / miles) * total;
+        markers.push({ at: d, mile: m, ...at(d) });
+      }
+      const served = new Set(r.stats.stations);
+      const stations = s.cities
         .filter((c) => served.has(c.name))
         .map((c) => {
           const p = map.latLngToContainerPoint([c.lat, c.lon]);
-          return { x: p.x, y: p.y, r: 6 + Math.sqrt((c.population ?? 50_000) / 1e6) * 9 };
+          let best = 0;
+          let bestD = Infinity;
+          pts.forEach((q, k) => {
+            const d = (q.x - p.x) ** 2 + (q.y - p.y) ** 2;
+            if (d < bestD) [best, bestD] = [k, d];
+          });
+          return { at: cum[best], x: p.x, y: p.y };
         });
+      s.built = { pts: pts.map((q) => ({ x: q.x, y: q.y })), cum, total, miles, ties, markers, stations };
     }
-    reproject.current = () => {
-      project();
-      cycleStart = performance.now(); // restart the race when the plan or selection changes
-    };
 
-    function pointAt(r: Projected, frac: number) {
-      const target = Math.max(0, Math.min(1, frac)) * r.cum[r.cum.length - 1];
-      let k = 1;
-      while (k < r.cum.length - 1 && r.cum[k] < target) k++;
-      const seg = r.cum[k] - r.cum[k - 1] || 1;
-      const t = (target - r.cum[k - 1]) / seg;
-      const a = r.pts[k - 1];
-      const b = r.pts[k];
-      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
-    }
+    restart.current = () => {
+      project();
+      start = performance.now();
+      instance?.loop();
+    };
 
     const onMove = () => {
       project();
-      if (reduced) instance?.redraw(); // static frame: redraw on pan instead of every frame
+      instance?.redraw();
     };
     const onZoomStart = () => (host.style.visibility = "hidden");
     const onZoomEnd = () => {
       project();
       host.style.visibility = "visible";
+      instance?.redraw();
     };
     const onResize = () => {
       const size = map.getSize();
@@ -114,72 +146,116 @@ export default function P5Overlay({ plan, cities, selected, enabled }: Props) {
     import("p5").then(({ default: P5 }) => {
       if (cancelled) return;
       instance = new P5((p: p5) => {
+        function pathTo(b: Built, length: number) {
+          p.beginShape();
+          for (let k = 0; k < b.pts.length; k++) {
+            if (b.cum[k] <= length) {
+              p.vertex(b.pts[k].x, b.pts[k].y);
+              continue;
+            }
+            const seg = b.cum[k] - b.cum[k - 1] || 1;
+            const t = (length - b.cum[k - 1]) / seg;
+            p.vertex(b.pts[k - 1].x + (b.pts[k].x - b.pts[k - 1].x) * t, b.pts[k - 1].y + (b.pts[k].y - b.pts[k - 1].y) * t);
+            break;
+          }
+          p.endShape();
+        }
+
+        function label(text: string, x: number, y: number, bg: string, fg: string) {
+          p.textSize(12);
+          p.textStyle(p.BOLD);
+          const w = p.textWidth(text) + 14;
+          p.noStroke();
+          p.fill(bg);
+          p.rect(x, y, w, 22, 3);
+          p.fill(fg);
+          p.textAlign(p.LEFT, p.CENTER);
+          p.text(text, x + 7, y + 11);
+        }
+
         p.setup = () => {
           const size = map.getSize();
           p.createCanvas(size.x, size.y).parent(host);
           p.frameRate(60);
+          p.textFont("IBM Plex Sans");
           project();
-          if (reduced) p.noLoop();
         };
 
         p.draw = () => {
           p.clear();
-          const s = state.current;
-          if (!s.routes.length) return;
-          const now = performance.now();
+          const b = state.current.built;
+          if (!b) return;
+          const duration = Math.min(MAX_MS, Math.max(MIN_MS, (b.miles / MILES_PER_SECOND) * 1000));
+          const elapsed = performance.now() - start;
+          const frac = reduced ? 1 : Math.min(1, elapsed / duration);
+          const length = frac * b.total;
+          const mile = Math.round(frac * b.miles);
 
-          // Station pulses on the selected route: rings sized by population, staggered.
-          s.stations.forEach((st, k) => {
-            const phase = ((now / 2000 + k * 0.17) % 1 + 1) % 1;
-            const c = p.color(ROUTE_COLORS[s.selected] ?? "#1f1f1d");
-            c.setAlpha(reduced ? 70 : 150 * (1 - phase));
-            p.noFill();
-            p.stroke(c);
+          // ties under the rail
+          p.stroke(TIE);
+          p.strokeWeight(2);
+          for (const t of b.ties) {
+            if (t.at > length) break;
+            p.line(t.x - t.nx * 7, t.y - t.ny * 7, t.x + t.nx * 7, t.y + t.ny * 7);
+          }
+          // rail: dark casing, yellow core
+          p.noFill();
+          p.strokeJoin(p.ROUND);
+          p.stroke(CASING);
+          p.strokeWeight(7);
+          pathTo(b, length);
+          p.stroke(PALETTE.yellow);
+          p.strokeWeight(4);
+          pathTo(b, length);
+
+          // stations reached so far
+          for (const st of b.stations) {
+            if (st.at > length + 1) continue;
+            p.stroke(CASING);
             p.strokeWeight(2);
-            p.circle(st.x, st.y, 2 * (st.r + (reduced ? 4 : 16 * phase)));
-          });
+            p.fill(PALETTE.yellow);
+            p.circle(st.x, st.y, 14);
+          }
 
-          // Trains: constant real-world speed, the longest route takes LONGEST_RUN_MS.
-          const longest = Math.max(...s.routes.map((r) => r.miles));
-          const elapsed = reduced ? LONGEST_RUN_MS * 0.6 : (now - cycleStart) % (LONGEST_RUN_MS + DWELL_MS);
-          const milesRun = (elapsed / LONGEST_RUN_MS) * longest;
+          // mile markers passed so far
+          p.textSize(11);
+          for (const m of b.markers) {
+            if (m.at > length) break;
+            p.stroke(CASING);
+            p.strokeWeight(1.5);
+            p.fill(PALETTE.tan);
+            p.circle(m.x, m.y, 8);
+            const tx = m.x + m.nx * 16;
+            const ty = m.y + m.ny * 16;
+            p.textAlign(p.CENTER, p.CENTER);
+            p.textStyle(p.BOLD);
+            p.stroke(CASING);
+            p.strokeWeight(3);
+            p.fill("#fff");
+            p.text(`${m.mile}`, tx, ty);
+          }
 
-          s.routes.forEach((r, i) => {
-            const frac = Math.min(1, milesRun / r.miles);
-            const sel = i === s.selected;
-            const trailFrac = (TRAIL_MILES_FRAC * longest) / r.miles;
-
-            // fading trail behind the train
-            const steps = 14;
-            for (let k = 0; k < steps; k++) {
-              const f0 = frac - (trailFrac * (k + 1)) / steps;
-              const f1 = frac - (trailFrac * k) / steps;
-              if (f1 <= 0) break;
-              const a = pointAt(r, f0);
-              const b = pointAt(r, f1);
-              const c = p.color(r.color);
-              c.setAlpha(220 * (1 - k / steps));
-              p.stroke(c);
-              p.strokeWeight((sel ? 6 : 4) * (1 - k / (steps * 1.4)));
-              p.line(a.x, a.y, b.x, b.y);
-            }
-
-            const head = pointAt(r, frac);
-            p.stroke(255);
+          if (frac < 1) {
+            // work head with running mile count
+            const k = b.cum.findIndex((c) => c >= length);
+            const seg = Math.max(1, k);
+            const t = (length - b.cum[seg - 1]) / (b.cum[seg] - b.cum[seg - 1] || 1);
+            const hx = b.pts[seg - 1].x + (b.pts[seg].x - b.pts[seg - 1].x) * t;
+            const hy = b.pts[seg - 1].y + (b.pts[seg].y - b.pts[seg - 1].y) * t;
+            p.stroke(CASING);
             p.strokeWeight(2);
-            p.fill(r.color);
-            p.circle(head.x, head.y, sel ? 13 : 10);
-
-            // arrival marker: ring holds at the destination during the dwell
-            if (frac >= 1) {
-              const c = p.color(r.color);
-              c.setAlpha(160);
-              p.noFill();
-              p.stroke(c);
-              p.strokeWeight(2);
-              p.circle(head.x, head.y, 22 + i * 7);
+            p.fill(PALETTE.yellow);
+            p.circle(hx, hy, 14);
+            label(`Mile ${mile} of ${Math.round(b.miles)}`, hx + 12, hy - 30, CASING, PALETTE.yellow);
+          } else {
+            const end = b.pts[b.pts.length - 1];
+            const sinceDone = elapsed - duration;
+            if (reduced || sinceDone < DONE_HOLD_MS) {
+              label(`${Math.round(b.miles)} miles of track`, end.x + 12, end.y - 30, CASING, PALETTE.yellow);
             }
-          });
+            // finished: stop drawing until the map moves or the build restarts
+            if (reduced || sinceDone >= DONE_HOLD_MS) p.noLoop();
+          }
         };
       });
     });
@@ -190,7 +266,7 @@ export default function P5Overlay({ plan, cities, selected, enabled }: Props) {
       map.off("zoomstart", onZoomStart);
       map.off("zoomend", onZoomEnd);
       map.off("resize", onResize);
-      reproject.current = () => {};
+      restart.current = () => {};
       instance?.remove();
       host.remove();
     };

@@ -1,5 +1,24 @@
-// First three slots of the validated categorical palette (all-pairs CVD-safe; aqua needs direct labels).
-export const ROUTE_COLORS = ["#2a78d6", "#eb6834", "#1baf7a"];
+import type { CSSProperties } from "react";
+
+// Yellow / tan / brown palette. Only the active corridor carries color; the others are greyed
+// out, so identity comes from the route number and name, never from hue.
+export const PALETTE = {
+  yellow: "#f2c12e", // active corridor on the satellite map
+  tan: "#d9c4a0",
+  brown: "#7a4e2d", // active corridor in charts and tables (7:1 with white text)
+  grey: "#b5aea3", // inactive corridors in charts and tables
+  mapGrey: "#e6e2da", // inactive corridors on the satellite map
+};
+
+/** Fill for bars and marks: brown when active, grey otherwise. */
+export function routeColor(i: number, selected: number): string {
+  return i === selected ? PALETTE.brown : PALETTE.grey;
+}
+
+/** Number badge colors: brown with white text when active, light grey with dark text otherwise. */
+export function badgeStyle(i: number, selected: number): CSSProperties {
+  return i === selected ? { background: PALETTE.brown, color: "#fff" } : { background: "#e2dcd2", color: "#2b2118" };
+}
 
 export function usd(x: number): string {
   if (x >= 1e9) return `$${(x / 1e9).toFixed(1)}B`;

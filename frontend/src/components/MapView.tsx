@@ -2,7 +2,7 @@ import { Fragment, useEffect } from "react";
 import L from "leaflet";
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import type { City, PlanResult } from "../api";
-import { ROUTE_COLORS } from "../format";
+import { PALETTE } from "../format";
 import P5Overlay from "./P5Overlay";
 
 interface Props {
@@ -12,11 +12,13 @@ interface Props {
   destId: number | null;
   selected: number;
   animate: boolean;
+  replayKey: number;
   onCityClick: (id: number) => void;
   onRouteClick: (idx: number) => void;
 }
 
 const toLatLng = (coords: [number, number][]) => coords.map(([lon, lat]) => [lat, lon] as [number, number]);
+const CASING = "#2b2118"; // dark brown edge keeps lines legible over imagery
 
 function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }) {
   const map = useMap();
@@ -30,38 +32,58 @@ function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }
   return null;
 }
 
-// Numbered badge at the middle of each route: identity is never color-alone.
-function routeBadge(rank: number, color: string) {
+// Numbered badge at the middle of each route: identity comes from the number, not color.
+function routeBadge(rank: number, active: boolean) {
+  const style = `background:${active ? PALETTE.yellow : PALETTE.mapGrey};color:${CASING}`;
   return L.divIcon({
     className: "route-badge-wrap",
-    html: `<span class="route-badge" style="background:${color}">${rank}</span>`,
+    html: `<span class="route-badge${active ? " active" : ""}" style="${style}">${rank}</span>`,
     iconSize: [22, 22],
     iconAnchor: [11, 11],
   });
 }
 
-export default function MapView({ cities, plan, originId, destId, selected, animate, onCityClick, onRouteClick }: Props) {
+export default function MapView(props: Props) {
+  const { cities, plan, originId, destId, selected, animate, replayKey, onCityClick, onRouteClick } = props;
+  // Draw inactive corridors first so the active one sits on top.
+  const order = plan ? plan.routes.map((_, i) => i).sort((a, b) => (a === selected ? 1 : b === selected ? -1 : a - b)) : [];
+
   return (
     <MapContainer className="map" center={[41.8, -79.5]} zoom={6} minZoom={4} scrollWheelZoom={false}>
       <TileLayer
-        attribution="Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors, and the GIS user community"
-        url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-        maxZoom={16}
+        attribution="Imagery &copy; Esri, Maxar, Earthstar Geographics, and the GIS user community"
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+        maxZoom={17}
+      />
+      <TileLayer
+        url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+        maxZoom={17}
+        opacity={0.8}
       />
       <FitToPlan plan={plan} cities={cities} />
-      <P5Overlay plan={plan} cities={cities} selected={selected} enabled={animate} />
+      <P5Overlay plan={plan} cities={cities} selected={selected} enabled={animate} replayKey={replayKey} />
 
-      {plan?.routes.map((r, i) => {
+      {order.map((i) => {
+        const r = plan!.routes[i];
         const pts = toLatLng(r.geometry.coordinates);
         const active = i === selected;
-        const color = ROUTE_COLORS[i % ROUTE_COLORS.length];
+        // While the construction animation runs, the active corridor is only a dashed survey line;
+        // the p5 canvas draws the track as it is "built".
+        const surveyOnly = active && animate;
         return (
           <Fragment key={r.key}>
-            {/* white casing = 2px surface ring where routes overlap */}
-            <Polyline positions={pts} pathOptions={{ color: "#fff", weight: active ? 9 : 6, opacity: 0.9 }} />
             <Polyline
               positions={pts}
-              pathOptions={{ color, weight: active ? 5 : 3, opacity: active ? 1 : 0.55 }}
+              pathOptions={{ color: CASING, weight: active ? 8 : 5, opacity: surveyOnly ? 0.35 : 0.75 }}
+              interactive={false}
+            />
+            <Polyline
+              positions={pts}
+              pathOptions={
+                surveyOnly
+                  ? { color: PALETTE.tan, weight: 2, opacity: 0.95, dashArray: "6 8" }
+                  : { color: active ? PALETTE.yellow : PALETTE.mapGrey, weight: active ? 5 : 3, opacity: active ? 1 : 0.9 }
+              }
               eventHandlers={{ click: () => onRouteClick(i) }}
             >
               <Tooltip sticky>
@@ -70,8 +92,9 @@ export default function MapView({ cities, plan, originId, destId, selected, anim
             </Polyline>
             <Marker
               position={pts[Math.floor(pts.length / 2)]}
-              icon={routeBadge(r.rank, color)}
+              icon={routeBadge(r.rank, active)}
               eventHandlers={{ click: () => onRouteClick(i) }}
+              zIndexOffset={active ? 1000 : 0}
             />
           </Fragment>
         );
@@ -85,9 +108,9 @@ export default function MapView({ cities, plan, originId, destId, selected, anim
             center={[c.lat, c.lon]}
             radius={role ? 8 : 5}
             pathOptions={{
-              color: "#fff",
+              color: CASING,
               weight: 2,
-              fillColor: role ? "#0b0b0b" : "#52514e",
+              fillColor: role ? PALETTE.yellow : "#ffffff",
               fillOpacity: 1,
             }}
             eventHandlers={{ click: () => onCityClick(c.id) }}

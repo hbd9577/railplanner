@@ -1,5 +1,5 @@
 import type { Distribution, RouteResult } from "../api";
-import { ROUTE_COLORS } from "../format";
+import { badgeStyle, routeColor } from "../format";
 
 interface Props {
   title: string;
@@ -29,10 +29,10 @@ export default function RangeCompare({ title, routes, pick, format, selected, on
       </div>
       {routes.map((r, i) => {
         const d = pick(r);
-        const color = ROUTE_COLORS[i];
+        const color = routeColor(i, selected);
         return (
           <button key={r.key} className={`range-row ${i === selected ? "sel" : ""}`} onClick={() => onSelect(i)}>
-            <span className="swatch" style={{ background: color }}>
+            <span className="swatch" style={badgeStyle(i, selected)}>
               {r.rank}
             </span>
             <span className="range-track">

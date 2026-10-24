@@ -1,5 +1,5 @@
 import type { RouteResult } from "../api";
-import { ROUTE_COLORS, people, usd, years } from "../format";
+import { badgeStyle, people, routeColor, usd, years } from "../format";
 
 interface Props {
   routes: RouteResult[];
@@ -61,7 +61,7 @@ export default function Comparison({ routes, selected, onSelect }: Props) {
             {routes.map((r, i) => (
               <th key={r.key} className={i === selected ? "sel" : ""}>
                 <button className="route-head" onClick={() => onSelect(i)} title={r.description}>
-                  <span className="swatch" style={{ background: ROUTE_COLORS[i] }}>
+                  <span className="swatch" style={badgeStyle(i, selected)}>
                     {r.rank}
                   </span>
                   <span>{r.label}</span>
@@ -94,7 +94,7 @@ export default function Comparison({ routes, selected, onSelect }: Props) {
                           {v === best && !tie && <span className="best">best</span>}
                         </span>
                         <span className="cell-bar">
-                          <span style={{ width: `${(Math.abs(v) / max) * 100}%`, background: ROUTE_COLORS[i] }} />
+                          <span style={{ width: `${(Math.abs(v) / max) * 100}%`, background: routeColor(i, selected) }} />
                         </span>
                       </div>
                     </td>

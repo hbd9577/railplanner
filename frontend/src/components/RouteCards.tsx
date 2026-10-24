@@ -1,5 +1,5 @@
 import type { RouteResult } from "../api";
-import { ROUTE_COLORS, people, usd, years } from "../format";
+import { badgeStyle, people, routeColor, usd, years } from "../format";
 
 interface Props {
   routes: RouteResult[];
@@ -18,12 +18,12 @@ export default function RouteCards({ routes, selected, onSelect }: Props) {
           <button
             key={r.key}
             className={`spec ${i === selected ? "sel" : ""}`}
-            style={{ "--route": ROUTE_COLORS[i] } as React.CSSProperties}
+            style={{ "--route": routeColor(i, selected) } as React.CSSProperties}
             onClick={() => onSelect(i)}
             aria-pressed={i === selected}
           >
             <div className="spec-name">
-              <span className="num" style={{ background: ROUTE_COLORS[i] }}>
+              <span className="num" style={badgeStyle(i, selected)}>
                 {r.rank}
               </span>
               {r.label}
