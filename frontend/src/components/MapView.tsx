@@ -21,11 +21,14 @@ const toLatLng = (coords: [number, number][]) => coords.map(([lon, lat]) => [lat
 function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }) {
   const map = useMap();
   useEffect(() => {
+    map.attributionControl.setPrefix(false); // tile and OSM credits stay; drop the small "Leaflet" link
+  }, [map]);
+  useEffect(() => {
     const pts = plan
       ? plan.routes.flatMap((r) => toLatLng(r.geometry.coordinates))
       : cities.map((c) => [c.lat, c.lon] as [number, number]);
     // keep routes clear of the legend panel in the top-right corner
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [30, 140], paddingBottomRight: [30, 30] });
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [100, 150], paddingBottomRight: [100, 50] });
   }, [plan, cities, map]);
   return null;
 }
@@ -34,9 +37,9 @@ function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }
 function routeBadge(rank: number, color: string) {
   return L.divIcon({
     className: "route-badge-wrap",
-    html: `<span class="route-badge" style="background:${color}">${rank}</span>`,
-    iconSize: [22, 22],
-    iconAnchor: [11, 11],
+    html: `<span class="route-badge" style="border-color:${color}">${rank}</span>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
   });
 }
 
@@ -87,7 +90,7 @@ export default function MapView({ cities, plan, originId, destId, selected, anim
             pathOptions={{
               color: "#fff",
               weight: 2,
-              fillColor: role ? "#0b0b0b" : "#52514e",
+              fillColor: role ? "#a3112e" : "#3a434d",
               fillOpacity: 1,
             }}
             eventHandlers={{ click: () => onCityClick(c.id) }}

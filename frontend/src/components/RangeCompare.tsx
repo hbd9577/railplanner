@@ -31,17 +31,23 @@ export default function RangeCompare({ title, routes, pick, format, selected, on
         const d = pick(r);
         const color = ROUTE_COLORS[i];
         return (
-          <button key={r.key} className={`range-row ${i === selected ? "sel" : ""}`} onClick={() => onSelect(i)}>
-            <span className="swatch" style={{ background: color }}>
+          <button
+            key={r.key}
+            className={`range-row ${i === selected ? "sel" : ""}`}
+            onClick={() => onSelect(i)}
+            aria-pressed={i === selected}
+            aria-label={`${r.rank}. ${r.label}: P10 ${format(d.p10)}, P50 ${format(d.p50)}, P90 ${format(d.p90)}`}
+          >
+            <span className="num" style={{ borderColor: color }} aria-hidden="true">
               {r.rank}
             </span>
-            <span className="range-track">
+            <span className="range-track" aria-hidden="true">
               <span
                 className="range-bar"
                 style={{ left: `${x(d.p10)}%`, width: `${x(d.p90) - x(d.p10)}%`, background: color }}
               />
-              <span className="range-end" style={{ left: `${x(d.p10)}%`, borderColor: color }} />
-              <span className="range-end" style={{ left: `${x(d.p90)}%`, borderColor: color }} />
+              <span className="range-end" style={{ left: `${x(d.p10)}%`, background: color }} />
+              <span className="range-end" style={{ left: `${x(d.p90)}%`, background: color }} />
               <span className="range-mid" style={{ left: `${x(d.p50)}%`, background: color }} />
             </span>
             <span className="range-cols values">
