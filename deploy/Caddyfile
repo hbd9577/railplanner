@@ -1,0 +1,13 @@
+# SITE_ADDRESS=":80" serves plain HTTP on the VM's public IP;
+# set it to a domain (e.g. railplanner.example.com) for automatic HTTPS.
+{$SITE_ADDRESS}
+
+encode gzip
+
+handle_path /api/* {
+	reverse_proxy api:8000
+}
+
+handle {
+	reverse_proxy frontend:80
+}

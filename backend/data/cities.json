@@ -1,0 +1,10 @@
+[
+  {"name": "New York City", "state": "NY", "lat": 40.7128, "lon": -74.0060, "population": 8804190},
+  {"name": "Buffalo",       "state": "NY", "lat": 42.8864, "lon": -78.8784, "population": 278349},
+  {"name": "Rochester",     "state": "NY", "lat": 43.1566, "lon": -77.6088, "population": 211328},
+  {"name": "Syracuse",      "state": "NY", "lat": 43.0481, "lon": -76.1474, "population": 148620},
+  {"name": "Albany",        "state": "NY", "lat": 42.6526, "lon": -73.7562, "population": 99224},
+  {"name": "Utica",         "state": "NY", "lat": 43.1009, "lon": -75.2327, "population": 65283},
+  {"name": "Binghamton",    "state": "NY", "lat": 42.0987, "lon": -75.9180, "population": 47969},
+  {"name": "Poughkeepsie",  "state": "NY", "lat": 41.7004, "lon": -73.9210, "population": 31577}
+]
