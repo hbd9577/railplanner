@@ -19,7 +19,8 @@ interface Props {
 
 const toLatLng = (coords: [number, number][]) => coords.map(([lon, lat]) => [lat, lon] as [number, number]);
 const CASING = "#2b2118"; // dark brown edge keeps lines legible over imagery
-const OVERLAY_WIDTH = 440; // matches .hero-overlay width in styles.css
+const OVERLAY_WIDTH = 440; // matches .hero-panel width in styles.css
+const HEADER_HEIGHT = 120; // floating .masthead over the map
 
 function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }) {
   const map = useMap();
@@ -29,7 +30,10 @@ function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }
       : cities.map((c) => [c.lat, c.lon] as [number, number]);
     // On wide screens the control panel overlays the map's left edge, so keep routes to its right.
     const wide = map.getContainer().clientWidth >= 860;
-    const pad = wide ? { paddingTopLeft: [OVERLAY_WIDTH + 40, 50], paddingBottomRight: [60, 50] } : { padding: [16, 36] };
+    // the floating header covers the top of the map, so leave room under it
+    const pad = wide
+      ? { paddingTopLeft: [OVERLAY_WIDTH + 40, HEADER_HEIGHT + 20], paddingBottomRight: [70, 50] }
+      : { paddingTopLeft: [16, 150], paddingBottomRight: [16, 30] };
     if (pts.length) map.fitBounds(L.latLngBounds(pts), pad as L.FitBoundsOptions);
   }, [plan, cities, map]);
   return null;
@@ -53,7 +57,7 @@ export default function MapView(props: Props) {
 
   return (
     <MapContainer className="map" center={[41.8, -79.5]} zoom={6} minZoom={4} scrollWheelZoom={false} zoomControl={false}>
-      <ZoomControl position="topright" />
+      <ZoomControl position="bottomright" />
       <TileLayer
         attribution="Imagery &copy; Esri, Maxar, Earthstar Geographics, and the GIS user community"
         url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
