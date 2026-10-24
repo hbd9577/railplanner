@@ -16,35 +16,40 @@ interface Datum {
   count: number;
 }
 
+const MARKERS = [
+  { p: "P10", label: "Optimistic", pos: "insideTopRight" },
+  { p: "P50", label: "Median", pos: "top" },
+  { p: "P90", label: "Conservative", pos: "insideTopLeft" },
+] as const;
+
 // Histogram of Monte Carlo runs with P10/P50/P90 markers. Bins come from the
 // TimescaleDB continuous aggregate (or the identical local fallback).
 export default function DistributionChart({ title, dist, color, format, runs }: Props) {
   const data: Datum[] = dist.histogram.map((b, i) => ({ key: String(i), lo: b.lo, hi: b.hi, count: b.count }));
+  const values = { P10: dist.p10, P50: dist.p50, P90: dist.p90 };
   const binOf = (v: number) => {
     const i = data.findIndex((d) => v >= d.lo && v < d.hi);
     return String(i === -1 ? (v < data[0].lo ? 0 : data.length - 1) : i);
   };
-  const markers = [
-    { p: "P10", v: dist.p10 },
-    { p: "P50", v: dist.p50 },
-    { p: "P90", v: dist.p90 },
-  ];
 
   return (
     <figure className="dist">
       <figcaption>
-        <span className="dist-title">{title}</span>
-        <span className="dist-values">
-          {markers.map((m) => (
-            <span key={m.p} className={m.p === "P50" ? "p50" : ""}>
-              {m.p} <strong>{format(m.v)}</strong>
-            </span>
+        <div className="dist-title">{title}</div>
+        <div className="pchips">
+          {MARKERS.map((m) => (
+            <div key={m.p} className={`pchip ${m.p === "P50" ? "main" : ""}`}>
+              <span className="pchip-lbl">
+                {m.p} · {m.label}
+              </span>
+              <span className="pchip-val">{format(values[m.p])}</span>
+            </div>
           ))}
-        </span>
+        </div>
       </figcaption>
-      <ResponsiveContainer width="100%" height={190}>
-        <BarChart data={data} margin={{ top: 18, right: 8, bottom: 0, left: 0 }} barCategoryGap={2}>
-          <CartesianGrid vertical={false} stroke="#e8e7e3" />
+      <ResponsiveContainer width="100%" height={210}>
+        <BarChart data={data} margin={{ top: 22, right: 12, bottom: 0, left: 12 }} barCategoryGap="18%">
+          <CartesianGrid vertical={false} stroke="#eceae5" />
           <XAxis
             dataKey="key"
             tickFormatter={(k) => format(data[Number(k)]?.lo ?? 0)}
@@ -55,31 +60,39 @@ export default function DistributionChart({ title, dist, color, format, runs }: 
           />
           <YAxis hide />
           <Tooltip
-            cursor={{ fill: "rgba(0,0,0,0.04)" }}
+            cursor={{ fill: "rgba(15, 27, 45, 0.05)" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as Datum;
               return (
                 <div className="chart-tip">
-                  <div>
+                  <div className="tip-head">
                     {format(d.lo)} – {format(d.hi)}
                   </div>
-                  <div className="muted">
-                    {d.count.toLocaleString()} runs ({((100 * d.count) / runs).toFixed(1)}%)
+                  <div>
+                    <strong>{d.count.toLocaleString()}</strong> of {runs.toLocaleString()} runs (
+                    {((100 * d.count) / runs).toFixed(1)}%)
                   </div>
                 </div>
               );
             }}
           />
-          <Bar dataKey="count" fill={color} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-          {markers.map((m) => (
+          <Bar
+            dataKey="count"
+            fill={color}
+            fillOpacity={0.85}
+            radius={[3, 3, 0, 0]}
+            activeBar={{ fillOpacity: 1, stroke: "#0f1b2d", strokeWidth: 1 }}
+            isAnimationActive={false}
+          />
+          {MARKERS.map((m) => (
             <ReferenceLine
               key={m.p}
-              x={binOf(m.v)}
-              stroke="#0b0b0b"
-              strokeDasharray={m.p === "P50" ? undefined : "3 3"}
-              strokeWidth={m.p === "P50" ? 2 : 1}
-              label={{ value: m.p, position: "top", fontSize: 11, fill: "#0b0b0b" }}
+              x={binOf(values[m.p])}
+              stroke="#0f1b2d"
+              strokeDasharray={m.p === "P50" ? undefined : "4 3"}
+              strokeWidth={m.p === "P50" ? 2 : 1.25}
+              label={{ value: m.p, position: m.pos, fontSize: 11, fontWeight: 600, fill: "#0f1b2d" }}
             />
           ))}
         </BarChart>

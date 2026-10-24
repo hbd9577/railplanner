@@ -22,7 +22,8 @@ function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }
     const pts = plan
       ? plan.routes.flatMap((r) => toLatLng(r.geometry.coordinates))
       : cities.map((c) => [c.lat, c.lon] as [number, number]);
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), { padding: [30, 30] });
+    // keep routes clear of the legend panel in the top-right corner
+    if (pts.length) map.fitBounds(L.latLngBounds(pts), { paddingTopLeft: [30, 140], paddingBottomRight: [30, 30] });
   }, [plan, cities, map]);
   return null;
 }

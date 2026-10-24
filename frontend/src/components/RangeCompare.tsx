@@ -10,34 +10,44 @@ interface Props {
   onSelect: (idx: number) => void;
 }
 
-// P10-P90 range bars on one shared axis so the alternatives compare at a glance.
+// P10-P90 range bars on one shared axis, with a distinct mark and value for each percentile.
 export default function RangeCompare({ title, routes, pick, format, selected, onSelect }: Props) {
   const lo = Math.min(...routes.map((r) => pick(r).p10));
   const hi = Math.max(...routes.map((r) => pick(r).p90));
-  const pad = (hi - lo) * 0.08 || 1;
-  const x = (v: number) => `${((v - (lo - pad)) / (hi - lo + 2 * pad)) * 100}%`;
+  const pad = (hi - lo) * 0.06 || 1;
+  const x = (v: number) => ((v - (lo - pad)) / (hi - lo + 2 * pad)) * 100;
 
   return (
     <div className="range-compare">
-      <div className="range-title">{title} (P10 – P50 – P90)</div>
+      <div className="range-head">
+        <span className="range-title">{title}</span>
+        <span className="range-cols">
+          <span>P10</span>
+          <span>P50</span>
+          <span>P90</span>
+        </span>
+      </div>
       {routes.map((r, i) => {
         const d = pick(r);
+        const color = ROUTE_COLORS[i];
         return (
           <button key={r.key} className={`range-row ${i === selected ? "sel" : ""}`} onClick={() => onSelect(i)}>
-            <span className="range-label">
-              <span className="swatch" style={{ background: ROUTE_COLORS[i] }}>
-                {r.rank}
-              </span>
+            <span className="swatch" style={{ background: color }}>
+              {r.rank}
             </span>
             <span className="range-track">
               <span
                 className="range-bar"
-                style={{ left: x(d.p10), width: `calc(${x(d.p90)} - ${x(d.p10)})`, background: ROUTE_COLORS[i] }}
+                style={{ left: `${x(d.p10)}%`, width: `${x(d.p90) - x(d.p10)}%`, background: color }}
               />
-              <span className="range-p50" style={{ left: x(d.p50) }} />
+              <span className="range-end" style={{ left: `${x(d.p10)}%`, borderColor: color }} />
+              <span className="range-end" style={{ left: `${x(d.p90)}%`, borderColor: color }} />
+              <span className="range-mid" style={{ left: `${x(d.p50)}%`, background: color }} />
             </span>
-            <span className="range-text">
-              {format(d.p10)} – <strong>{format(d.p50)}</strong> – {format(d.p90)}
+            <span className="range-cols values">
+              <span>{format(d.p10)}</span>
+              <strong>{format(d.p50)}</strong>
+              <span>{format(d.p90)}</span>
             </span>
           </button>
         );
