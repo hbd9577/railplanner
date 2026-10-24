@@ -50,7 +50,7 @@ const GROUPS: Group[] = [
 ];
 
 // Every value gets its own bar (scaled to the row's max) so magnitudes compare at a glance;
-// the best value in each row carries a text tag, not color alone.
+// the best value in each row is marked in text, not color alone.
 export default function Comparison({ routes, selected, onSelect }: Props) {
   return (
     <div className="compare-wrap">
@@ -91,7 +91,7 @@ export default function Comparison({ routes, selected, onSelect }: Props) {
                       <div className="cell">
                         <span className="cell-val">
                           {row.format(v)}
-                          {v === best && !tie && <span className="best-tag">Best</span>}
+                          {v === best && !tie && <span className="best">best</span>}
                         </span>
                         <span className="cell-bar">
                           <span style={{ width: `${(Math.abs(v) / max) * 100}%`, background: ROUTE_COLORS[i] }} />

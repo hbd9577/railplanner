@@ -36,20 +36,17 @@ export default function DistributionChart({ title, dist, color, format, runs }: 
     <figure className="dist">
       <figcaption>
         <div className="dist-title">{title}</div>
-        <div className="pchips">
+        <div className="pline">
           {MARKERS.map((m) => (
-            <div key={m.p} className={`pchip ${m.p === "P50" ? "main" : ""}`}>
-              <span className="pchip-lbl">
-                {m.p} · {m.label}
-              </span>
-              <span className="pchip-val">{format(values[m.p])}</span>
-            </div>
+            <span key={m.p} className={m.p === "P50" ? "main" : ""} title={m.label}>
+              <span className="plbl">{m.p}</span> {format(values[m.p])}
+            </span>
           ))}
         </div>
       </figcaption>
       <ResponsiveContainer width="100%" height={210}>
         <BarChart data={data} margin={{ top: 22, right: 12, bottom: 0, left: 12 }} barCategoryGap="18%">
-          <CartesianGrid vertical={false} stroke="#eceae5" />
+          <CartesianGrid vertical={false} stroke="#ebe9e3" />
           <XAxis
             dataKey="key"
             tickFormatter={(k) => format(data[Number(k)]?.lo ?? 0)}
@@ -60,7 +57,7 @@ export default function DistributionChart({ title, dist, color, format, runs }: 
           />
           <YAxis hide />
           <Tooltip
-            cursor={{ fill: "rgba(15, 27, 45, 0.05)" }}
+            cursor={{ fill: "rgba(0, 0, 0, 0.04)" }}
             content={({ active, payload }) => {
               if (!active || !payload?.length) return null;
               const d = payload[0].payload as Datum;
@@ -82,17 +79,17 @@ export default function DistributionChart({ title, dist, color, format, runs }: 
             fill={color}
             fillOpacity={0.85}
             radius={[3, 3, 0, 0]}
-            activeBar={{ fillOpacity: 1, stroke: "#0f1b2d", strokeWidth: 1 }}
+            activeBar={{ fillOpacity: 1 }}
             isAnimationActive={false}
           />
           {MARKERS.map((m) => (
             <ReferenceLine
               key={m.p}
               x={binOf(values[m.p])}
-              stroke="#0f1b2d"
+              stroke="#1f1f1d"
               strokeDasharray={m.p === "P50" ? undefined : "4 3"}
               strokeWidth={m.p === "P50" ? 2 : 1.25}
-              label={{ value: m.p, position: m.pos, fontSize: 11, fontWeight: 600, fill: "#0f1b2d" }}
+              label={{ value: m.p, position: m.pos, fontSize: 11, fill: "#1f1f1d" }}
             />
           ))}
         </BarChart>

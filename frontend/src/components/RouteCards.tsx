@@ -7,64 +7,64 @@ interface Props {
   onSelect: (idx: number) => void;
 }
 
-// One card per alternative: the headline numbers as stat tiles, so each figure reads on its own.
+// One spec sheet per alternative: headline figure first, then the details as label/value rows.
 export default function RouteCards({ routes, selected, onSelect }: Props) {
-  const bestScore = Math.max(...routes.map((r) => r.stats.score));
   return (
-    <div className="route-cards">
+    <div className="specs">
       {routes.map((r, i) => {
-        const color = ROUTE_COLORS[i];
         const cost = r.simulation.cost;
         const dur = r.simulation.duration;
         return (
           <button
             key={r.key}
-            className={`route-card ${i === selected ? "sel" : ""}`}
-            style={{ "--route": color } as React.CSSProperties}
+            className={`spec ${i === selected ? "sel" : ""}`}
+            style={{ "--route": ROUTE_COLORS[i] } as React.CSSProperties}
             onClick={() => onSelect(i)}
             aria-pressed={i === selected}
           >
-            <div className="rc-head">
-              <span className="swatch lg" style={{ background: color }}>
+            <div className="spec-name">
+              <span className="num" style={{ background: ROUTE_COLORS[i] }}>
                 {r.rank}
               </span>
-              <div className="rc-title">
-                <div className="rc-name">{r.label}</div>
-                <div className="rc-sub">
-                  {r.stats.stations.length} stations · {r.stats.row_reuse_pct.toFixed(0)}% on existing rail
-                </div>
-              </div>
-              <div className={`score-pill ${r.stats.score === bestScore ? "top" : ""}`} title="Composite score (0-100)">
-                <span className="score-num">{r.stats.score.toFixed(1)}</span>
-                <span className="score-lbl">score</span>
-              </div>
+              {r.label}
             </div>
-            <div className="rc-stats">
-              <div className="stat">
-                <div className="stat-lbl">Capital cost · P50</div>
-                <div className="stat-val">{usd(cost.p50)}</div>
-                <div className="stat-range">
-                  {usd(cost.p10)} – {usd(cost.p90)}
-                </div>
-              </div>
-              <div className="stat">
-                <div className="stat-lbl">Time to opening · P50</div>
-                <div className="stat-val">{years(dur.p50)}</div>
-                <div className="stat-range">
-                  {years(dur.p10)} – {years(dur.p90)}
-                </div>
-              </div>
-              <div className="stat">
-                <div className="stat-lbl">Length</div>
-                <div className="stat-val">{r.stats.length_miles.toFixed(0)} mi</div>
-                <div className="stat-range">{(cost.p50 / 1e6 / r.stats.length_miles).toFixed(0)} $M per mile</div>
-              </div>
-              <div className="stat">
-                <div className="stat-lbl">Population served</div>
-                <div className="stat-val">{people(r.stats.population_served)}</div>
-                <div className="stat-range">within {r.stats.buffer_miles.toFixed(0)} mi</div>
-              </div>
+            <div className="spec-lead">
+              <span className="figure">{usd(cost.p50)}</span>
+              <span className="figure-note">
+                median cost, {usd(cost.p10)}–{usd(cost.p90)} P10–P90
+              </span>
             </div>
+            <dl className="spec-rows">
+              <div>
+                <dt>Time to opening</dt>
+                <dd>
+                  {years(dur.p50)} <span className="dim">({years(dur.p10)}–{years(dur.p90)})</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Length</dt>
+                <dd>
+                  {r.stats.length_miles.toFixed(0)} mi{" "}
+                  <span className="dim">({(cost.p50 / 1e6 / r.stats.length_miles).toFixed(0)} $M/mi)</span>
+                </dd>
+              </div>
+              <div>
+                <dt>Population served</dt>
+                <dd>{people(r.stats.population_served)}</dd>
+              </div>
+              <div>
+                <dt>On existing rail</dt>
+                <dd>{r.stats.row_reuse_pct.toFixed(1)}%</dd>
+              </div>
+              <div>
+                <dt>Stations</dt>
+                <dd>{r.stats.stations.length}</dd>
+              </div>
+              <div>
+                <dt>Score</dt>
+                <dd>{r.stats.score.toFixed(1)}</dd>
+              </div>
+            </dl>
           </button>
         );
       })}

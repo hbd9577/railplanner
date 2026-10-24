@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, type City, type DemoPair, type PlanResult, type RouteResult } from "./api";
+import { api, type City, type DemoPair, type PlanResult } from "./api";
 import Comparison from "./components/Comparison";
 import DistributionChart from "./components/DistributionChart";
 import FundingPanel from "./components/FundingPanel";
@@ -7,44 +7,14 @@ import MapView from "./components/MapView";
 import ProposalPanel from "./components/ProposalPanel";
 import RangeCompare from "./components/RangeCompare";
 import RouteCards from "./components/RouteCards";
-import { ROUTE_COLORS, months, people, usd, years } from "./format";
+import Summary from "./components/Summary";
+import { ROUTE_COLORS, months, usd, years } from "./format";
 
-function Swatch({ i, rank }: { i: number; rank: number }) {
+function Num({ i, rank }: { i: number; rank: number }) {
   return (
-    <span className="swatch" style={{ background: ROUTE_COLORS[i] }}>
+    <span className="num" style={{ background: ROUTE_COLORS[i] }}>
       {rank}
     </span>
-  );
-}
-
-// "At a glance": which alternative leads on each headline measure.
-function Highlights({ routes, onSelect }: { routes: RouteResult[]; onSelect: (i: number) => void }) {
-  const leaders: { label: string; pick: (r: RouteResult) => number; best: "max" | "min"; fmt: (v: number) => string }[] = [
-    { label: "Highest score", pick: (r) => r.stats.score, best: "max", fmt: (v) => v.toFixed(1) },
-    { label: "Lowest cost (P50)", pick: (r) => r.simulation.cost.p50, best: "min", fmt: usd },
-    { label: "Fastest to open (P50)", pick: (r) => r.simulation.duration.p50, best: "min", fmt: years },
-    { label: "Most people served", pick: (r) => r.stats.population_served, best: "max", fmt: people },
-  ];
-  return (
-    <ul className="highlights">
-      {leaders.map((l) => {
-        const vals = routes.map(l.pick);
-        const v = l.best === "max" ? Math.max(...vals) : Math.min(...vals);
-        const i = vals.indexOf(v);
-        return (
-          <li key={l.label}>
-            <button onClick={() => onSelect(i)}>
-              <span className="hl-lbl">{l.label}</span>
-              <span className="hl-route">
-                <Swatch i={i} rank={routes[i].rank} />
-                <span className="hl-name">{routes[i].label}</span>
-              </span>
-              <span className="hl-val">{l.fmt(v)}</span>
-            </button>
-          </li>
-        );
-      })}
-    </ul>
   );
 }
 
@@ -102,75 +72,59 @@ export default function App() {
   const sorted = useMemo(() => [...cities].sort((a, b) => a.name.localeCompare(b.name)), [cities]);
   const canPlan = originId != null && destId != null && originId !== destId && loading == null;
   const planMatches = plan && plan.origin.id === originId && plan.destination.id === destId;
-  const source = route?.simulation.source;
 
   return (
-    <div className="shell">
-      <header className="appbar">
-        <div className="appbar-inner">
-          <div className="brand">
-            <span className="logo" aria-hidden>
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M4 17h16M6 21l2-4m10 4-2-4M7 3h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm-2 6h14" />
-              </svg>
-            </span>
-            <div>
-              <div className="brand-name">RailPlanner</div>
-              <div className="brand-sub">Passenger rail corridor decision support</div>
-            </div>
+    <div className="page">
+      <header className="masthead">
+        <div className="masthead-inner">
+          <div>
+            <div className="wordmark">RailPlanner</div>
+            <div className="dek">Corridor alternatives, cost and schedule ranges, and federal funding fit</div>
           </div>
           {plan && route && (
-            <div className="status">
-              <span className="status-item">
-                <span className={`dot ${source === "tiger_cagg" ? "live" : "local"}`} />
-                {source === "tiger_cagg" ? "Tiger Data" : "Computed locally"}
-              </span>
-              <span className="status-item">{route.simulation.runs.toLocaleString()} simulations / route</span>
-              <span className="status-item">{plan.cached ? "Stored results" : "Computed now"}</span>
+            <div className="provenance">
+              {route.simulation.source === "tiger_cagg" ? "Results from Tiger Data" : "Results computed locally"}
+              {" · "}
+              {route.simulation.runs.toLocaleString()} simulations per alternative
+              {" · "}
+              {plan.cached ? "stored run" : "new run"}
             </div>
           )}
         </div>
       </header>
 
-      <div className="disclaimer" role="note">
-        <span className="disc-icon" aria-hidden>
-          !
-        </span>
-        <span>
-          <strong>Illustrative estimates.</strong> Cost benchmarks are not calibrated. Ranges express modeled
-          uncertainty, not a budget or engineering estimate.
-        </span>
-      </div>
-
       <main className="app">
+        <p className="caveat">
+          <strong>Illustrative estimates.</strong> Cost benchmarks are not calibrated. Ranges express modeled
+          uncertainty, not a budget or an engineering estimate.
+        </p>
+
         {error && (
           <div className="notice" role="alert">
             {error}
           </div>
         )}
 
-        <section className="layout">
+        <section className="top">
           <aside className="side">
-            <div className="card">
-              <div className="card-head">
-                <h2>Corridor</h2>
-              </div>
-              <div className="field-lbl">Demo corridors</div>
-              <div className="chips">
+            <div className="block">
+              <h2>Corridor</h2>
+              <ul className="presets">
                 {pairs.map((p) => (
-                  <button
-                    key={p.label}
-                    className={`chip ${p.origin_id === originId && p.dest_id === destId ? "on" : ""}`}
-                    onClick={() => runPlan(p.origin_id, p.dest_id)}
-                    disabled={loading != null}
-                  >
-                    {p.label}
-                  </button>
+                  <li key={p.label}>
+                    <button
+                      className={p.origin_id === originId && p.dest_id === destId ? "on" : ""}
+                      onClick={() => runPlan(p.origin_id, p.dest_id)}
+                      disabled={loading != null}
+                    >
+                      {p.label}
+                    </button>
+                  </li>
                 ))}
-              </div>
+              </ul>
               <div className="selects">
                 <label>
-                  <span className="field-lbl">From</span>
+                  From
                   <select value={originId ?? ""} onChange={(e) => setOriginId(Number(e.target.value) || null)}>
                     <option value="">Choose a city</option>
                     {sorted.map((c) => (
@@ -181,7 +135,7 @@ export default function App() {
                   </select>
                 </label>
                 <label>
-                  <span className="field-lbl">To</span>
+                  To
                   <select value={destId ?? ""} onChange={(e) => setDestId(Number(e.target.value) || null)}>
                     <option value="">Choose a city</option>
                     {sorted.map((c) => (
@@ -193,14 +147,8 @@ export default function App() {
                 </label>
               </div>
               <div className="row">
-                <button className="primary grow" disabled={!canPlan} onClick={() => runPlan(originId!, destId!)}>
-                  {loading === "plan" ? (
-                    <>
-                      <span className="spinner" /> Planning…
-                    </>
-                  ) : (
-                    "Plan corridor"
-                  )}
+                <button className="primary" disabled={!canPlan} onClick={() => runPlan(originId!, destId!)}>
+                  {loading === "plan" ? "Planning…" : "Plan corridor"}
                 </button>
                 {planMatches && (
                   <button
@@ -212,23 +160,18 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <p className="muted small">Tip: click two cities on the map to choose a corridor.</p>
+              <p className="note">You can also pick two cities on the map.</p>
             </div>
 
             {plan && (
-              <div className="card">
-                <div className="card-head">
-                  <h2>At a glance</h2>
-                  <span className="muted small">
-                    {plan.origin.name} → {plan.destination.name}
-                  </span>
-                </div>
-                <Highlights routes={plan.routes} onSelect={setSelected} />
+              <div className="block">
+                <h2>Summary</h2>
+                <Summary plan={plan} onSelect={setSelected} />
               </div>
             )}
           </aside>
 
-          <div className="map-card">
+          <figure className="map-frame">
             <MapView
               cities={cities}
               plan={plan}
@@ -240,48 +183,46 @@ export default function App() {
             />
             {loading && (
               <div className="map-loading">
-                <span className="spinner dark" />{" "}
                 {loading === "boot" ? "Loading…" : "Generating routes and running simulations…"}
               </div>
             )}
             {plan && (
               <div className="legend">
-                <div className="legend-title">Candidate alignments</div>
                 {plan.routes.map((r, i) => (
                   <button key={r.key} className={i === selected ? "on" : ""} onClick={() => setSelected(i)}>
-                    <Swatch i={i} rank={r.rank} />
-                    <span>{r.label}</span>
-                    <span className="legend-mi">{r.stats.length_miles.toFixed(0)} mi</span>
+                    <span className="line" style={{ background: ROUTE_COLORS[i] }} />
+                    <span>
+                      {r.rank}. {r.label}
+                    </span>
+                    <span className="dim">{r.stats.length_miles.toFixed(0)} mi</span>
                   </button>
                 ))}
               </div>
             )}
-          </div>
+          </figure>
         </section>
 
         {plan && route && (
           <>
-            <section>
-              <div className="section-title">
-                <h2>Alternatives</h2>
-                <span className="muted small">Select a card to focus the map and the detail sections below.</span>
-              </div>
+            <section className="sect">
+              <h2>Alternatives</h2>
               <RouteCards routes={plan.routes} selected={selected} onSelect={setSelected} />
             </section>
 
-            <section className="card">
-              <div className="card-head">
-                <h2>Side-by-side comparison</h2>
-                <span className="muted small">Bars scale to the largest value in each row · “Best” marks the leader</span>
+            <section className="sect">
+              <div className="sect-head">
+                <h2>Comparison</h2>
+                <span className="note">Bars are scaled to the largest value in each row.</span>
               </div>
               <Comparison routes={plan.routes} selected={selected} onSelect={setSelected} />
             </section>
 
-            <section className="card">
-              <div className="card-head">
-                <h2>Cost &amp; schedule uncertainty</h2>
-                <span className="muted small">
-                  {route.simulation.runs.toLocaleString()} Monte Carlo runs per alternative
+            <section className="sect">
+              <div className="sect-head">
+                <h2>Cost and schedule uncertainty</h2>
+                <span className="note">
+                  {route.simulation.runs.toLocaleString()} Monte Carlo runs per alternative; markers show P10, P50
+                  and P90.
                 </span>
               </div>
               <div className="ranges">
@@ -302,12 +243,9 @@ export default function App() {
                   onSelect={setSelected}
                 />
               </div>
-              <div className="subhead">
-                <Swatch i={selected} rank={route.rank} />
-                <span>
-                  Distribution for <strong>{route.label}</strong>
-                </span>
-              </div>
+              <h3 className="subhead">
+                <Num i={selected} rank={route.rank} /> {route.label}: distribution of runs
+              </h3>
               <div className="charts">
                 <DistributionChart
                   title="Capital cost"
@@ -324,71 +262,68 @@ export default function App() {
                   runs={route.simulation.runs}
                 />
               </div>
-              <div className="facts">
+              <dl className="facts">
                 <div>
-                  <span className="fact-lbl">Stations</span>
-                  <span>{route.stats.stations.join(" · ")}</span>
+                  <dt>Stations</dt>
+                  <dd>{route.stats.stations.join(", ")}</dd>
                 </div>
                 <div>
-                  <span className="fact-lbl">River crossings</span>
-                  <span>
+                  <dt>River crossings</dt>
+                  <dd>
                     {route.stats.river_crossings} ({route.stats.river_crossings_new} new)
-                  </span>
+                  </dd>
                 </div>
                 <div>
-                  <span className="fact-lbl">Environmental flags</span>
-                  <span>
+                  <dt>Environmental flags</dt>
+                  <dd>
                     {Object.entries(route.stats.env_flags)
                       .map(([k, v]) => `${v} ${k}`)
-                      .join(" · ")}
-                  </span>
+                      .join(", ")}
+                  </dd>
                 </div>
-              </div>
+              </dl>
             </section>
 
-            <section className="grid2">
-              <div className="card">
-                <div className="card-head">
+            <section className="sect two">
+              <div>
+                <div className="sect-head">
                   <h2>Funding programs</h2>
-                  <span className="route-tag">
-                    <Swatch i={selected} rank={route.rank} /> {route.label}
+                  <span className="note">
+                    For <Num i={selected} rank={route.rank} /> {route.label}. Select a row for the rationale.
                   </span>
                 </div>
                 <FundingPanel matches={route.funding} basis={route.simulation.cost.p50} />
               </div>
-              <div className="card">
-                <div className="card-head">
+              <div>
+                <div className="sect-head">
                   <h2>Proposal</h2>
+                  <span className="note">Drafted from the computed results only; no new numbers.</span>
                 </div>
-                <p className="muted small">
-                  Drafted by Gemini from the computed results only; it cannot introduce new numbers.
-                </p>
                 <ProposalPanel requestId={plan.request_id} />
               </div>
             </section>
 
-            <section className="card assumptions">
-              <div className="card-head">
-                <h2>Assumptions &amp; data sources</h2>
-              </div>
-              <div className="assume-grid">
-                <ul>
+            <section className="sect notes">
+              <h2>Assumptions and sources</h2>
+              <div className="two">
+                <ol>
                   {plan.assumptions.map((a) => (
                     <li key={a}>{a}</li>
                   ))}
-                </ul>
+                </ol>
                 <dl className="sources">
                   {Object.entries(plan.data_sources).map(([k, v]) => (
                     <div key={k}>
                       <dt>{k.replace(/_/g, " ")}</dt>
                       <dd>
-                        {v.source} <span className={`tag ${v.flag === "real" ? "ok" : ""}`}>{v.flag}</span>
+                        {v.source}
+                        {v.flag !== "real" && <em> ({v.flag})</em>}
                       </dd>
                     </div>
                   ))}
                 </dl>
               </div>
-              <p className="muted small">Generated {new Date(plan.created_at).toLocaleString()}</p>
+              <p className="note">Generated {new Date(plan.created_at).toLocaleString()}.</p>
             </section>
           </>
         )}

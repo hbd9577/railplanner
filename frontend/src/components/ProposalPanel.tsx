@@ -111,8 +111,8 @@ export default function ProposalPanel({ requestId }: Props) {
         {proposal?.number_check && (
           <span className={`check ${proposal.number_check.passed ? "ok" : "warn"}`}>
             {proposal.number_check.passed
-              ? "✓ Number check passed: every figure comes from the computed results"
-              : `⚠ Number check: ${proposal.number_check.unmatched.length} figure(s) not found in the computed results`}
+              ? "Number check passed: every figure appears in the computed results."
+              : `Number check: ${proposal.number_check.unmatched.length} figure(s) not found in the computed results.`}
           </span>
         )}
       </div>
