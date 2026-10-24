@@ -17,7 +17,7 @@ from matplotlib.colors import LightSource  # noqa: E402
 
 from app.routing import generate_candidates, load_cities, load_grid  # noqa: E402
 
-COLORS = ["#2563eb", "#dc2626", "#16a34a"]
+COLORS = ["#2a78d6", "#eb6834", "#1baf7a"]  # same as the frontend ROUTE_COLORS
 
 
 def main() -> None:
