@@ -40,7 +40,7 @@ export default function Summary({ plan, onSelect }: { plan: PlanResult; onSelect
       {[...byRoute.entries()].map(([i, clauses]) => (
         <p key={i}>
           <button className="inline-route" onClick={() => onSelect(i)}>
-            <span className="num" style={{ borderColor: ROUTE_COLORS[i] }}>
+            <span className="num" style={{ background: ROUTE_COLORS[i] }}>
               {r[i].rank}
             </span>
             {r[i].label}

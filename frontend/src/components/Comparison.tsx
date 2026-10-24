@@ -53,15 +53,15 @@ const GROUPS: Group[] = [
 // the best value in each row is marked in text, not color alone.
 export default function Comparison({ routes, selected, onSelect }: Props) {
   return (
-    <div className="table-scroll">
+    <div className="compare-wrap">
       <table className="compare">
         <thead>
           <tr>
-            <th scope="col">Measure</th>
+            <th className="metric-col">Metric</th>
             {routes.map((r, i) => (
-              <th key={r.key} scope="col" data-selected={i === selected}>
-                <button className="route-head" onClick={() => onSelect(i)} aria-pressed={i === selected}>
-                  <span className="num" style={{ borderColor: ROUTE_COLORS[i] }} aria-hidden="true">
+              <th key={r.key} className={i === selected ? "sel" : ""}>
+                <button className="route-head" onClick={() => onSelect(i)} title={r.description}>
+                  <span className="swatch" style={{ background: ROUTE_COLORS[i] }}>
                     {r.rank}
                   </span>
                   <span>{r.label}</span>
@@ -72,10 +72,8 @@ export default function Comparison({ routes, selected, onSelect }: Props) {
         </thead>
         {GROUPS.map((g) => (
           <tbody key={g.name}>
-            <tr className="group">
-              <th colSpan={routes.length + 1} scope="colgroup">
-                {g.name}
-              </th>
+            <tr className="group-row">
+              <th colSpan={routes.length + 1}>{g.name}</th>
             </tr>
             {g.rows.map((row) => {
               const vals = routes.map(row.value);
@@ -89,13 +87,13 @@ export default function Comparison({ routes, selected, onSelect }: Props) {
                     {row.hint && <span className="hint">{row.hint}</span>}
                   </th>
                   {vals.map((v, i) => (
-                    <td key={i} data-selected={i === selected}>
+                    <td key={i} className={i === selected ? "sel" : ""}>
                       <div className="cell">
                         <span className="cell-val">
                           {row.format(v)}
                           {v === best && !tie && <span className="best">best</span>}
                         </span>
-                        <span className="cell-bar" aria-hidden="true">
+                        <span className="cell-bar">
                           <span style={{ width: `${(Math.abs(v) / max) * 100}%`, background: ROUTE_COLORS[i] }} />
                         </span>
                       </div>

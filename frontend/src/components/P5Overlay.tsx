@@ -128,14 +128,15 @@ export default function P5Overlay({ plan, cities, selected, enabled }: Props) {
           if (!s.routes.length) return;
           const now = performance.now();
 
-          // Stations on the selected route: static rings sized by population (no pulsing).
-          s.stations.forEach((st) => {
-            const c = p.color(ROUTE_COLORS[s.selected] ?? "#161b21");
-            c.setAlpha(110);
+          // Station pulses on the selected route: rings sized by population, staggered.
+          s.stations.forEach((st, k) => {
+            const phase = ((now / 2000 + k * 0.17) % 1 + 1) % 1;
+            const c = p.color(ROUTE_COLORS[s.selected] ?? "#1f1f1d");
+            c.setAlpha(reduced ? 70 : 150 * (1 - phase));
             p.noFill();
             p.stroke(c);
-            p.strokeWeight(1.5);
-            p.circle(st.x, st.y, 2 * st.r);
+            p.strokeWeight(2);
+            p.circle(st.x, st.y, 2 * (st.r + (reduced ? 4 : 16 * phase)));
           });
 
           // Trains: constant real-world speed, the longest route takes LONGEST_RUN_MS.

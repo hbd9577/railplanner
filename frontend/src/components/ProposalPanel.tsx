@@ -84,10 +84,10 @@ export default function ProposalPanel({ requestId }: Props) {
   return (
     <div className="proposal">
       <div className="proposal-actions">
-        <button className="btn btn-primary" onClick={generate} disabled={status.kind === "loading"}>
+        <button className="primary" onClick={generate} disabled={status.kind === "loading"}>
           {status.kind === "loading" ? (
             <>
-              Drafting proposal…
+              <span className="spinner" /> Drafting proposal…
             </>
           ) : proposal ? (
             "Regenerate proposal"
@@ -96,15 +96,15 @@ export default function ProposalPanel({ requestId }: Props) {
           )}
         </button>
         {proposal && voiceOk && (
-          <button className="btn" onClick={() => listen(summary)} disabled={voiceState === "loading"}>
+          <button onClick={() => listen(summary)} disabled={voiceState === "loading"}>
             {voiceState === "loading" ? (
               <>
-                Preparing audio…
+                <span className="spinner dark" /> Preparing audio…
               </>
             ) : voiceState === "playing" ? (
-              "Stop narration"
+              "Stop"
             ) : (
-              "Read summary aloud"
+              "Listen to summary"
             )}
           </button>
         )}
@@ -125,14 +125,13 @@ export default function ProposalPanel({ requestId }: Props) {
 
       <form className="ask" onSubmit={ask}>
         <input
-          type="text"
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ask about these results, e.g. Why is route 2 cheaper?"
           aria-label="Question about the results"
         />
-        <button type="submit" className="btn" disabled={askState.kind === "loading" || !question.trim()}>
-          {askState.kind === "loading" ? "Answering…" : "Ask"}
+        <button type="submit" disabled={askState.kind === "loading" || !question.trim()}>
+          {askState.kind === "loading" ? <span className="spinner dark" /> : "Ask"}
         </button>
       </form>
       {askState.kind === "error" && <p className="notice">{askState.message}</p>}
@@ -142,8 +141,8 @@ export default function ProposalPanel({ requestId }: Props) {
           <div className="a">
             <ReactMarkdown>{x.a}</ReactMarkdown>
             {voiceOk && (
-              <button className="btn-text" onClick={() => listen(x.a)}>
-                Read this answer aloud
+              <button className="link" onClick={() => listen(x.a)}>
+                Listen
               </button>
             )}
           </div>
