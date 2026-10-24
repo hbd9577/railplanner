@@ -27,7 +27,7 @@ interface Built {
   stations: { at: number; x: number; y: number }[];
 }
 
-const CASING = "#2b2118";
+const CASING = "#251a09";
 const TIE = "#5a3a1f";
 const TIE_SPACING_PX = 7;
 const MILES_PER_SECOND = 130;
@@ -177,7 +177,7 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
           const size = map.getSize();
           p.createCanvas(size.x, size.y).parent(host);
           p.frameRate(60);
-          p.textFont("IBM Plex Sans");
+          p.textFont("Oswald");
           project();
         };
 
