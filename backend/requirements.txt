@@ -6,4 +6,9 @@ psycopg[binary,pool]>=3.2
 python-dotenv>=1.0
 httpx>=0.27
 pytest>=8.3
+# compute
 numpy>=2.0
+scipy>=1.13
+scikit-image>=0.24
+shapely>=2.0
+pyproj>=3.6

@@ -1,0 +1,6 @@
+# Only needed to (re)build data/processed/ with scripts/prepare_data.py and to plot routes.
+-r requirements.txt
+geopandas>=1.0
+rasterio>=1.4
+requests>=2.32
+matplotlib>=3.9

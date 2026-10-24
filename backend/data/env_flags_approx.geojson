@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "_note": "APPROXIMATE, hand-digitized outlines for demo purposes only. Not authoritative boundaries. Lines are buffered (buffer_km) into polygons by scripts/prepare_data.py.",
+  "features": [
+    {"type": "Feature", "properties": {"name": "Adirondack Park (approx.)", "kind": "protected", "buffer_km": 0},
+     "geometry": {"type": "Polygon", "coordinates": [[[-75.30,43.30],[-75.05,43.95],[-75.10,44.30],[-74.60,44.85],[-74.00,44.85],[-73.70,44.55],[-73.40,44.20],[-73.40,43.60],[-73.60,43.30],[-73.90,43.05],[-74.40,43.05],[-74.90,43.15],[-75.30,43.30]]]}},
+    {"type": "Feature", "properties": {"name": "Catskill Park (approx.)", "kind": "protected", "buffer_km": 0},
+     "geometry": {"type": "Polygon", "coordinates": [[[-74.65,42.00],[-74.55,42.35],[-74.20,42.35],[-73.98,42.20],[-74.05,41.95],[-74.35,41.85],[-74.60,41.85],[-74.65,42.00]]]}},
+    {"type": "Feature", "properties": {"name": "Harriman / Bear Mountain State Parks (approx.)", "kind": "protected", "buffer_km": 0},
+     "geometry": {"type": "Polygon", "coordinates": [[[-74.20,41.15],[-73.95,41.20],[-73.98,41.35],[-74.20,41.30],[-74.20,41.15]]]}},
+    {"type": "Feature", "properties": {"name": "Montezuma wetlands complex (approx.)", "kind": "wetland", "buffer_km": 0},
+     "geometry": {"type": "Polygon", "coordinates": [[[-76.80,42.90],[-76.65,42.90],[-76.62,43.10],[-76.75,43.12],[-76.80,42.90]]]}},
+    {"type": "Feature", "properties": {"name": "Iroquois NWR / Tonawanda & Oak Orchard WMAs (approx.)", "kind": "wetland", "buffer_km": 0},
+     "geometry": {"type": "Polygon", "coordinates": [[[-78.50,43.03],[-78.20,43.03],[-78.20,43.15],[-78.50,43.15],[-78.50,43.03]]]}},
+    {"type": "Feature", "properties": {"name": "Mohawk River floodplain (approx.)", "kind": "floodplain", "buffer_km": 1.5},
+     "geometry": {"type": "LineString", "coordinates": [[-73.70,42.77],[-73.94,42.82],[-74.19,42.94],[-74.37,42.95],[-74.86,43.04],[-74.99,43.03],[-75.23,43.10],[-75.45,43.21]]}},
+    {"type": "Feature", "properties": {"name": "Hudson River floodplain (approx.)", "kind": "floodplain", "buffer_km": 1.5},
+     "geometry": {"type": "LineString", "coordinates": [[-73.68,42.78],[-73.75,42.65],[-73.79,42.30],[-73.95,41.95],[-73.95,41.70],[-73.97,41.30],[-73.92,41.00]]}},
+    {"type": "Feature", "properties": {"name": "Genesee River floodplain (approx.)", "kind": "floodplain", "buffer_km": 1.0},
+     "geometry": {"type": "LineString", "coordinates": [[-77.62,43.25],[-77.63,43.10],[-77.75,42.95],[-77.85,42.75]]}},
+    {"type": "Feature", "properties": {"name": "Seneca River / Erie Canal wetlands (approx.)", "kind": "floodplain", "buffer_km": 1.5},
+     "geometry": {"type": "LineString", "coordinates": [[-76.20,43.12],[-76.40,43.08],[-76.55,43.05],[-76.75,43.02],[-76.95,43.05]]}}
+  ]
+}

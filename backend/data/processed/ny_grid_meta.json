@@ -1,0 +1,77 @@
+{
+  "crs": "EPSG:5070",
+  "cell_m": 1000,
+  "shape": [
+    642,
+    754
+  ],
+  "transform": [
+    1000.0,
+    0.0,
+    1264000.0,
+    0.0,
+    -1000.0,
+    2694000.0
+  ],
+  "bounds": [
+    1264000.0,
+    2052000.0,
+    2018000.0,
+    2694000.0
+  ],
+  "built_at": "2026-10-24T03:58:05+00:00",
+  "layers": [
+    "in_ny",
+    "pop",
+    "elev",
+    "slope_mean",
+    "slope_max",
+    "row_active",
+    "row_inactive",
+    "row_passenger",
+    "water",
+    "river",
+    "env_protected",
+    "env_wetland",
+    "env_floodplain"
+  ],
+  "sources": {
+    "population": {
+      "source": "Census TIGERweb 2020 tracts (POP100)",
+      "flag": "real",
+      "total_rasterized": 20201248.0,
+      "total_tracts": 20201249.0
+    },
+    "rail": {
+      "source": "BTS NTAD North American Rail Network Lines",
+      "flag": "real",
+      "segments": 5629,
+      "active": 5481,
+      "inactive": 148
+    },
+    "terrain": {
+      "source": "USGS 3DEP ImageServer",
+      "flag": "real",
+      "fine_resolution_m": 250
+    },
+    "water": {
+      "source": "Natural Earth 10m lakes/rivers + DEM ocean mask",
+      "flag": "real (coarse)"
+    },
+    "env_flags": {
+      "source": "env_flags_approx.geojson",
+      "flag": "approximate (hand-digitized, demo only)",
+      "features": [
+        "Adirondack Park (approx.)",
+        "Catskill Park (approx.)",
+        "Harriman / Bear Mountain State Parks (approx.)",
+        "Montezuma wetlands complex (approx.)",
+        "Iroquois NWR / Tonawanda & Oak Orchard WMAs (approx.)",
+        "Mohawk River floodplain (approx.)",
+        "Hudson River floodplain (approx.)",
+        "Genesee River floodplain (approx.)",
+        "Seneca River / Erie Canal wetlands (approx.)"
+      ]
+    }
+  }
+}

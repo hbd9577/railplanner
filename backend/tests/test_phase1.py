@@ -5,8 +5,9 @@ from app.db import split_sql
 from app.main import app
 
 
-def test_health_responds_without_db():
-    r = TestClient(app).get("/health")
+def test_health_responds():
+    with TestClient(app) as client:  # context manager runs lifespan, which closes the DB pool
+        r = client.get("/health")
     assert r.status_code == 200
     assert r.json()["status"] in {"ok", "degraded"}
 
