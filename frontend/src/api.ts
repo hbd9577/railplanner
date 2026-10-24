@@ -106,9 +106,20 @@ export interface PlanResult {
   cached: boolean;
 }
 
+export interface NumberCheck {
+  passed: boolean;
+  unmatched: string[];
+}
+
 export interface ProposalResult {
   markdown: string;
-  number_check?: { passed: boolean; unmatched: string[] };
+  number_check?: NumberCheck;
+  source?: "gemini" | "cache" | "template";
+}
+
+export interface AskResult {
+  answer: string;
+  number_check?: NumberCheck;
 }
 
 export class ApiError extends Error {
@@ -142,9 +153,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ origin_id, dest_id }),
     }),
-  proposal: (requestId: number) => request<ProposalResult>(`/proposal/${requestId}`, { method: "POST" }),
+  proposal: (requestId: number, refresh = false) =>
+    request<ProposalResult>(`/proposal/${requestId}${refresh ? "?refresh=true" : ""}`, { method: "POST" }),
   ask: (requestId: number, question: string) =>
-    request<{ answer: string }>(`/ask/${requestId}`, { method: "POST", body: JSON.stringify({ question }) }),
+    request<AskResult>(`/ask/${requestId}`, { method: "POST", body: JSON.stringify({ question }) }),
   voice: async (text: string): Promise<Blob> => {
     const res = await fetch("/api/voice", {
       method: "POST",

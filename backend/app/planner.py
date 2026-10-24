@@ -242,3 +242,46 @@ def delete_plans(origin_id: int, dest_id: int) -> int:
                          "(SELECT id FROM routes WHERE request_id = ANY(%s))", (reqs,))
             conn.execute("DELETE FROM corridor_requests WHERE id = ANY(%s)", (reqs,))
     return len(reqs)
+
+
+# ---------------------------------------------------------------- proposal cache
+
+def _proposal_cache_path(plan: PlanResult):
+    return DEMO_DIR / f"{_slug(plan.origin.name)}__{_slug(plan.destination.name)}.proposal.json"
+
+
+def load_proposal(plan: PlanResult) -> dict | None:
+    """Cached Gemini proposal for this plan: Tiger first, then the committed demo JSON."""
+    if plan.request_id is not None:
+        try:
+            with db.connection() as conn:
+                row = conn.execute("SELECT markdown, number_check FROM proposals WHERE request_id = %s",
+                                   (plan.request_id,)).fetchone()
+            if row:
+                return {"markdown": row["markdown"], "number_check": row["number_check"]}
+        except db.DBUnavailable:
+            pass
+    path = _proposal_cache_path(plan)
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if data.get("request_id") == plan.request_id:
+            return {"markdown": data["markdown"], "number_check": data["number_check"]}
+    return None
+
+
+def save_proposal(plan: PlanResult, result: dict) -> None:
+    if plan.request_id is not None:
+        try:
+            with db.connection() as conn:
+                conn.execute(
+                    "INSERT INTO proposals (request_id, markdown, number_check) VALUES (%s, %s, %s) "
+                    "ON CONFLICT (request_id) DO UPDATE SET markdown = EXCLUDED.markdown, "
+                    "number_check = EXCLUDED.number_check, created_at = now()",
+                    (plan.request_id, result["markdown"], Jsonb(result["number_check"])))
+        except db.DBUnavailable:
+            log.warning("proposal not stored (db unavailable)")
+    pair = (plan.origin.name, plan.destination.name)
+    if pair in DEMO_PAIRS:
+        _proposal_cache_path(plan).write_text(json.dumps(
+            {"request_id": plan.request_id, "markdown": result["markdown"], "number_check": result["number_check"]},
+            indent=1, ensure_ascii=False), encoding="utf-8")

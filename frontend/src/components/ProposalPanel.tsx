@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { ApiError, api, type ProposalResult } from "../api";
+import { ApiError, api, type NumberCheck, type ProposalResult } from "../api";
 
 interface Props {
   requestId: number | null;
@@ -19,7 +19,7 @@ export default function ProposalPanel({ requestId }: Props) {
   const [voiceOk, setVoiceOk] = useState(true);
   const [voiceState, setVoiceState] = useState<"idle" | "loading" | "playing">("idle");
   const [question, setQuestion] = useState("");
-  const [answers, setAnswers] = useState<{ q: string; a: string }[]>([]);
+  const [answers, setAnswers] = useState<{ q: string; a: string; check?: NumberCheck }[]>([]);
   const [askState, setAskState] = useState<Status>({ kind: "idle" });
   const audio = useRef<HTMLAudioElement | null>(null);
 
@@ -34,10 +34,10 @@ export default function ProposalPanel({ requestId }: Props) {
     return <p className="muted">Proposals need a stored plan. Reconnect the database and plan again.</p>;
   }
 
-  async function generate() {
+  async function generate(refresh: boolean) {
     setStatus({ kind: "loading" });
     try {
-      setProposal(await api.proposal(requestId!));
+      setProposal(await api.proposal(requestId!, refresh));
       setStatus({ kind: "idle" });
     } catch (e) {
       setStatus({ kind: "error", message: errorText(e, "Could not generate the proposal") });
@@ -70,8 +70,8 @@ export default function ProposalPanel({ requestId }: Props) {
     if (!q) return;
     setAskState({ kind: "loading" });
     try {
-      const { answer } = await api.ask(requestId!, q);
-      setAnswers((xs) => [...xs, { q, a: answer }]);
+      const { answer, number_check } = await api.ask(requestId!, q);
+      setAnswers((xs) => [...xs, { q, a: answer, check: number_check }]);
       setQuestion("");
       setAskState({ kind: "idle" });
     } catch (err) {
@@ -84,7 +84,7 @@ export default function ProposalPanel({ requestId }: Props) {
   return (
     <div className="proposal">
       <div className="proposal-actions">
-        <button className="primary" onClick={generate} disabled={status.kind === "loading"}>
+        <button className="primary" onClick={() => generate(!!proposal)} disabled={status.kind === "loading"}>
           {status.kind === "loading" ? (
             <>
               <span className="spinner" /> Drafting proposal…
@@ -116,6 +116,16 @@ export default function ProposalPanel({ requestId }: Props) {
           </span>
         )}
       </div>
+      {status.kind === "loading" && (
+        <p className="note">Gemini is drafting from the computed results; this usually takes 10 to 30 seconds.</p>
+      )}
+      {proposal?.source === "template" && (
+        <p className="note">
+          Template draft: the language model was unavailable, so this was assembled directly from the results. Try
+          Regenerate in a moment for a written draft.
+        </p>
+      )}
+      {proposal?.source === "cache" && <p className="note">Saved draft for this plan. Regenerate for a new one.</p>}
       {status.kind === "error" && <p className="notice">{status.message}</p>}
       {proposal && (
         <article className="markdown">
@@ -131,7 +141,7 @@ export default function ProposalPanel({ requestId }: Props) {
           aria-label="Question about the results"
         />
         <button type="submit" disabled={askState.kind === "loading" || !question.trim()}>
-          {askState.kind === "loading" ? <span className="spinner dark" /> : "Ask"}
+          {askState.kind === "loading" ? "Answering…" : "Ask"}
         </button>
       </form>
       {askState.kind === "error" && <p className="notice">{askState.message}</p>}
@@ -140,6 +150,13 @@ export default function ProposalPanel({ requestId }: Props) {
           <div className="q">{x.q}</div>
           <div className="a">
             <ReactMarkdown>{x.a}</ReactMarkdown>
+            {x.check && (
+              <p className={`check small ${x.check.passed ? "ok" : "warn"}`}>
+                {x.check.passed
+                  ? "Number check passed."
+                  : `Number check: ${x.check.unmatched.join(", ")} not found in the results.`}
+              </p>
+            )}
             {voiceOk && (
               <button className="link" onClick={() => listen(x.a)}>
                 Listen

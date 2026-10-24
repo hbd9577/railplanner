@@ -12,7 +12,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from . import planner
+from . import planner, proposal
 from .config import get_settings
 from .db import DBUnavailable
 from .models import City, PlanResult
@@ -82,8 +82,7 @@ def create_plan(body: PlanRequest, fresh: bool = False) -> PlanResult:
     return planner.run_plan(origin.id, dest.id)
 
 
-@router.get("/plan/{request_id}", response_model=PlanResult)
-def get_plan(request_id: int) -> PlanResult:
+def _plan_or_404(request_id: int) -> PlanResult:
     try:
         plan = planner.load_plan(request_id)
     except DBUnavailable:
@@ -93,17 +92,41 @@ def get_plan(request_id: int) -> PlanResult:
     return plan
 
 
-# Wired up in Phase 6 (Gemini) and Phase 8 (ElevenLabs). Until then the UI hides these features.
+@router.get("/plan/{request_id}", response_model=PlanResult)
+def get_plan(request_id: int) -> PlanResult:
+    return _plan_or_404(request_id)
+
+
 @router.post("/proposal/{request_id}")
-def create_proposal(request_id: int):
-    raise HTTPException(503, "Proposal generation is not configured yet")
+def create_proposal(request_id: int, refresh: bool = False) -> dict:
+    """Gemini-drafted proposal; cached per plan. Falls back to a template draft if Gemini is down."""
+    plan = _plan_or_404(request_id)
+    if not refresh:
+        cached = planner.load_proposal(plan)
+        if cached is not None:
+            return {**cached, "source": "cache"}
+    result = proposal.generate_proposal(plan)
+    if result["source"] == "gemini":
+        planner.save_proposal(plan, result)
+    return result
 
 
 @router.post("/ask/{request_id}")
-def ask(request_id: int, body: AskRequest):
-    raise HTTPException(503, "Q&A is not configured yet")
+def ask(request_id: int, body: AskRequest) -> dict:
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(400, "question is empty")
+    if len(question) > 500:
+        raise HTTPException(400, "question is too long (500 characters max)")
+    plan = _plan_or_404(request_id)
+    try:
+        return proposal.ask(question, plan)
+    except proposal.GeminiUnavailable as e:
+        log.warning("ask unavailable: %s", e)
+        raise HTTPException(503, "Q&A is temporarily unavailable (the language model is busy). Try again shortly.")
 
 
+# Wired up in Phase 8 (ElevenLabs). Until then the UI hides narration.
 @router.post("/voice")
 def voice(body: VoiceRequest):
     raise HTTPException(503, "Voice narration is not configured yet")

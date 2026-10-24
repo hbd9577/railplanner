@@ -80,7 +80,5 @@ def test_db_down_falls_back(client, ids, monkeypatch):
     assert {rt["simulation"]["source"] for rt in plan["routes"]} == {"local"}
 
 
-def test_later_phase_endpoints_unavailable(client):
-    assert client.post("/proposal/1").status_code == 503
-    assert client.post("/ask/1", json={"question": "why?"}).status_code == 503
+def test_voice_not_configured_yet(client):
     assert client.post("/voice", json={"text": "hi"}).status_code == 503
