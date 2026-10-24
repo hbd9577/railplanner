@@ -14,7 +14,7 @@ from functools import lru_cache
 from psycopg.types.json import Jsonb
 
 from . import db
-from .config import get_settings
+from .config import DATA_DIR, get_settings
 from .funding import load_programs, match_route
 from .models import City, FundingMatch, PlanResult, RouteResult, RouteStats
 from .routing import generate_candidates, load_cities, load_grid
@@ -181,3 +181,62 @@ def load_plan(request_id: int) -> PlanResult | None:
                       data_sources=load_grid().meta["sources"],
                       created_at=req["created_at"].isoformat(timespec="seconds"), cached=True)
 
+
+
+# ---------------------------------------------------------------- demo pairs + cache
+
+# (origin, destination) by city name. Precomputed by scripts/precompute_demo.py into Tiger and
+# into committed JSON (data/demo_cache/) that serves the demo even when the DB is unreachable.
+DEMO_PAIRS = [("Albany", "Buffalo"), ("Albany", "New York City"), ("Syracuse", "Rochester")]
+DEMO_DIR = DATA_DIR / "demo_cache"
+
+
+def _slug(name: str) -> str:
+    return name.lower().replace(" ", "_")
+
+
+def demo_cache_path(origin: City, dest: City):
+    return DEMO_DIR / f"{_slug(origin.name)}__{_slug(dest.name)}.json"
+
+
+def save_demo_cache(plan: PlanResult) -> None:
+    DEMO_DIR.mkdir(parents=True, exist_ok=True)
+    demo_cache_path(plan.origin, plan.destination).write_text(plan.model_dump_json(indent=1), encoding="utf-8")
+
+
+def load_demo_cache(origin: City, dest: City) -> PlanResult | None:
+    p = demo_cache_path(origin, dest)
+    if not p.exists():
+        return None
+    plan = PlanResult.model_validate_json(p.read_text(encoding="utf-8"))
+    return plan.model_copy(update={"cached": True})
+
+
+def find_demo_cache_by_request(request_id: int) -> PlanResult | None:
+    for p in DEMO_DIR.glob("*.json"):
+        plan = PlanResult.model_validate_json(p.read_text(encoding="utf-8"))
+        if plan.request_id == request_id:
+            return plan.model_copy(update={"cached": True})
+    return None
+
+
+def find_latest_plan(origin_id: int, dest_id: int) -> int | None:
+    with db.connection() as conn:
+        row = conn.execute(
+            "SELECT r.id FROM corridor_requests r WHERE r.origin_city_id = %s AND r.dest_city_id = %s "
+            "AND EXISTS (SELECT 1 FROM routes WHERE request_id = r.id) ORDER BY r.created_at DESC LIMIT 1",
+            (origin_id, dest_id)).fetchone()
+    return row["id"] if row else None
+
+
+def delete_plans(origin_id: int, dest_id: int) -> int:
+    """Remove stored plans (and their simulation runs) for a pair. Returns the number of requests deleted."""
+    with db.connection() as conn, conn.transaction():
+        reqs = [r["id"] for r in conn.execute(
+            "SELECT id FROM corridor_requests WHERE origin_city_id = %s AND dest_city_id = %s",
+            (origin_id, dest_id)).fetchall()]
+        if reqs:
+            conn.execute("DELETE FROM simulation_runs WHERE route_id IN "
+                         "(SELECT id FROM routes WHERE request_id = ANY(%s))", (reqs,))
+            conn.execute("DELETE FROM corridor_requests WHERE id = ANY(%s)", (reqs,))
+    return len(reqs)

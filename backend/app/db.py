@@ -8,16 +8,24 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from contextlib import contextmanager
 from typing import Iterator
 
 import psycopg
 from psycopg.rows import dict_row
-from psycopg_pool import ConnectionPool
+from psycopg_pool import ConnectionPool, PoolTimeout
 
 from .config import DATA_DIR, SQL_DIR, get_settings
 
 _pool: ConnectionPool | None = None
+_down_until = 0.0
+COOLDOWN_S = 30.0  # after a connection failure, fail fast for this long so fallbacks stay snappy
+CONNECT_TIMEOUT_S = 5
+
+
+class DBUnavailable(RuntimeError):
+    """The database could not be reached (or is in its failure cool-down)."""
 
 
 def get_pool() -> ConnectionPool:
@@ -25,12 +33,13 @@ def get_pool() -> ConnectionPool:
     if _pool is None:
         url = get_settings().database_url
         if not url:
-            raise RuntimeError("DATABASE_URL is not set (see .env.example)")
+            raise DBUnavailable("DATABASE_URL is not set (see .env.example)")
         _pool = ConnectionPool(
             url,
             min_size=1,
             max_size=5,
-            kwargs={"row_factory": dict_row, "autocommit": True},
+            timeout=CONNECT_TIMEOUT_S,
+            kwargs={"row_factory": dict_row, "autocommit": True, "connect_timeout": CONNECT_TIMEOUT_S},
             open=True,
         )
     return _pool
@@ -43,10 +52,35 @@ def close_pool() -> None:
         _pool = None
 
 
+def _mark_down() -> None:
+    global _down_until
+    _down_until = time.monotonic() + COOLDOWN_S
+
+
+def available() -> bool:
+    return time.monotonic() >= _down_until
+
+
 @contextmanager
 def connection() -> Iterator[psycopg.Connection]:
-    with get_pool().connection() as conn:
+    """Pooled connection. Connection-level failures raise DBUnavailable and start a cool-down."""
+    if not available():
+        raise DBUnavailable("database unavailable (cool-down after a recent failure)")
+    try:
+        pool_cm = get_pool().connection()
+        conn = pool_cm.__enter__()
+    except (psycopg.OperationalError, PoolTimeout) as e:
+        _mark_down()
+        raise DBUnavailable(str(e)) from e
+    try:
         yield conn
+    except BaseException as e:
+        if isinstance(e, psycopg.OperationalError):
+            _mark_down()
+        if not pool_cm.__exit__(*sys.exc_info()):
+            raise
+    else:
+        pool_cm.__exit__(None, None, None)
 
 
 def db_info() -> dict:
