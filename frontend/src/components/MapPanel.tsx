@@ -115,6 +115,7 @@ export default function MapPanel(p: Props) {
             <div className="map-fit">
               <button onClick={() => p.onFit("all")}>Fit all</button>
               <button onClick={() => p.onFit("selected")}>Fit selected</button>
+              {p.animate && <button onClick={p.onReplay}>Replay build</button>}
             </div>
           </div>
         )}
@@ -137,13 +138,8 @@ export default function MapPanel(p: Props) {
           ))}
           <label className="check">
             <input type="checkbox" checked={p.animate} onChange={(e) => p.onAnimate(e.target.checked)} />
-            Animate construction of the selected route
+            Animate track construction of the selected route
           </label>
-          {p.animate && (
-            <button className="link" onClick={p.onReplay}>
-              Replay
-            </button>
-          )}
           <p className="fine">Being near an existing rail line does not mean access, spare capacity or permission to operate on it.</p>
         </details>
         <p className="sr-only">

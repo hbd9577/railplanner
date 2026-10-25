@@ -55,7 +55,7 @@ export default function App() {
   const [weights, setWeights] = useState<Weights>(initial.current.w ?? { ...DEFAULT_WEIGHTS });
   const [prioritiesOpen, setPrioritiesOpen] = useState(false);
   const [pickStep, setPickStep] = useState<"off" | "origin" | "dest">("off");
-  const [animate, setAnimate] = useState(false);
+  const [animate, setAnimate] = useState(true); // track-building animation (finished track under reduced motion)
   const [replayKey, setReplayKey] = useState(0);
   const [basemap, setBasemap] = useState<Basemap>("satellite");
   const [layers, setLayers] = useState<Layers>({ rail: false, protected: false, terrain: false, labels: true });

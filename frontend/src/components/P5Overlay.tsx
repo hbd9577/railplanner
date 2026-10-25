@@ -27,8 +27,8 @@ interface Built {
   stations: { at: number; x: number; y: number }[];
 }
 
-const CASING = "#1f2937";
-const TIE = "#4b5563";
+const CASING = "#1a120a";
+const TIE = "#8a6a45"; // timber ties
 const TIE_SPACING_PX = 7;
 const MILES_PER_SECOND = 130;
 const MIN_MS = 3500;
@@ -247,12 +247,12 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
             p.strokeWeight(2);
             p.fill(COLOR);
             p.circle(hx, hy, 14);
-            label(`Mile ${mile} of ${Math.round(b.miles)}`, hx + 12, hy - 30, CASING, "#ffffff");
+            label(`Mile ${mile} of ${Math.round(b.miles)}`, hx + 12, hy - 30, CASING, "#f3e7c9");
           } else {
             const end = b.pts[b.pts.length - 1];
             const sinceDone = elapsed - duration;
             if (reduced || sinceDone < DONE_HOLD_MS) {
-              label(`${Math.round(b.miles)} miles of track`, end.x + 12, end.y - 30, CASING, "#ffffff");
+              label(`${Math.round(b.miles)} miles of track`, end.x + 12, end.y - 30, CASING, "#f3e7c9");
             }
             // finished: stop drawing until the map moves or the build restarts
             if (reduced || sinceDone >= DONE_HOLD_MS) p.noLoop();
