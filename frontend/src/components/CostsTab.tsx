@@ -3,6 +3,7 @@ import type { PlanResult } from "../api";
 import { altStyle, usd, years } from "../format";
 import DistributionChart, { shareAbove } from "./DistributionChart";
 import RangeCompare from "./RangeCompare";
+import BenefitsPanel from "./BenefitsPanel";
 import { AltName } from "./ui";
 
 interface Props {
@@ -89,6 +90,8 @@ export default function CostsTab({ plan, selected, onSelect }: Props) {
           not probabilities that the real project will exceed these values.
         </p>
       </section>
+
+      <BenefitsPanel plan={plan} selected={selected} />
 
       <div className="two-col">
         <section className="panel">

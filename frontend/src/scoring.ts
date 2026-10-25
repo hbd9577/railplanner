@@ -13,23 +13,35 @@ export interface Priority {
 export const PRIORITIES: Priority[] = [
   { id: "cost", label: "Lower capital cost", metric: "cost", help: "Median simulated capital cost (illustrative)." },
   { id: "delivery", label: "Faster delivery", metric: "duration", help: "Median simulated time to opening." },
-  { id: "access", label: "More residents near stations", metric: "popStations",
-    help: "Residents within 10 km of a station. Only one population measure is weighted, to avoid double counting." },
+  { id: "riders", label: "More riders", metric: "riders",
+    help: "Median modeled annual riders under the service plan. Supersedes residents near stations, so both are not weighted together by default." },
+  { id: "time", label: "Shorter train time", metric: "tripTime", help: "End-to-end train time under the service plan." },
+  { id: "subsidy", label: "Lower operating subsidy", metric: "subsidy",
+    help: "Median annual operating cost minus fare revenue. A surplus scores best." },
   { id: "environment", label: "Less new track in flagged areas", metric: "envNew",
     help: "Miles of new track inside protected land, refuges or floodplain proxies. Existing track that already crosses them is not counted." },
+  { id: "access", label: "More residents near stations", metric: "popStations",
+    help: "Residents within 10 km of a station. Overlaps with riders, so it is off by default." },
   { id: "newTrack", label: "Less new right-of-way", metric: "newTrack",
     help: "Miles of new track. Partly overlaps with capital cost, so it is off by default." },
 ];
 
 export const UNAVAILABLE_PRIORITIES = [
-  { label: "Faster journeys", why: "Travel time is not modeled; alignment length is not a substitute." },
-  { label: "Greater reliability", why: "Requires an operations simulation with freight traffic." },
-  { label: "Lower operating subsidy", why: "Operating costs, fares and ridership are not modeled." },
+  { label: "Greater reliability", why: "Needs an operations simulation with freight traffic; only a freight-ownership indicator is available." },
 ];
 
 export type Weights = Record<string, number>;
 
-export const DEFAULT_WEIGHTS: Weights = { cost: 35, delivery: 20, access: 25, environment: 20, newTrack: 0 };
+export const DEFAULT_WEIGHTS: Weights = {
+  cost: 25,
+  delivery: 10,
+  riders: 25,
+  time: 10,
+  subsidy: 15,
+  environment: 15,
+  access: 0,
+  newTrack: 0,
+};
 
 /**
  * Normalization: within the alternatives on screen, the best value of each measure scores 1.
@@ -38,6 +50,17 @@ export const DEFAULT_WEIGHTS: Weights = { cost: 35, delivery: 20, access: 25, en
  */
 export function normalized(routes: RouteResult[], m: Metric): number[] {
   const vals = routes.map(m.get);
+  if (vals.some((v) => v < 0)) {
+    // Measures that can be negative (an operating surplus) cannot use ratios: scale linearly so the
+    // best scores 1 and the worst 0.05.
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    if (hi === lo) return vals.map(() => 1);
+    return vals.map((v) => {
+      const t = (v - lo) / (hi - lo); // 0 at the lowest value
+      return m.direction === "lower" ? 1 - 0.95 * t : 0.05 + 0.95 * t;
+    });
+  }
   if (m.direction === "lower") {
     const max = Math.max(...vals);
     if (max <= 0) return vals.map(() => 1);

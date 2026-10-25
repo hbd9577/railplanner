@@ -1,5 +1,5 @@
 import type { RouteResult } from "../api";
-import { altStyle, miles, people, pct, usd, years } from "../format";
+import { altStyle, hm, money, people, pct, usd, years } from "../format";
 import { gainGiveUp } from "../summary";
 import { AltName } from "./ui";
 
@@ -44,20 +44,20 @@ export default function AltCards({ routes, selected, leader, onSelect }: Props) 
                 <dd>{years(r.simulation.duration.p50)}</dd>
               </div>
               <div>
-                <dt>Length</dt>
-                <dd>{miles(r.stats.length_miles)}</dd>
+                <dt>Train time</dt>
+                <dd>{r.service?.available ? hm(r.service.end_to_end_min) : "—"}</dd>
+              </div>
+              <div>
+                <dt>Riders a year</dt>
+                <dd>{r.service?.riders ? people(r.service.riders.p50) : "—"}</dd>
+              </div>
+              <div>
+                <dt>Subsidy a year</dt>
+                <dd>{r.service?.subsidy ? money(r.service.subsidy.p50) : "—"}</dd>
               </div>
               <div>
                 <dt>On existing rail</dt>
                 <dd>{pct(r.stats.row_reuse_pct)}</dd>
-              </div>
-              <div>
-                <dt>Stations</dt>
-                <dd>{r.stats.stations.length}</dd>
-              </div>
-              <div>
-                <dt>Near stations</dt>
-                <dd>{people(r.stats.pop_near_stations)}</dd>
               </div>
             </dl>
             <div className="gg">

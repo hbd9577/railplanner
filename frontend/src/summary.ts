@@ -2,13 +2,17 @@
 // unresolved questions and suggested Q&A prompts. Nothing here is hardcoded to a corridor, and
 // every comparative claim is checked against the numbers before it is made.
 import type { PlanResult, RouteResult } from "./api";
-import { list, miles, pct, people, usd, years } from "./format";
+import { hm, list, miles, money, pct, people, usd, years } from "./format";
 import { METRIC, type Metric } from "./metrics";
 import { rank, type Weights } from "./scoring";
 
 const MEANINGFUL = 0.03; // differences under 3% are treated as ties
 
+// Differences smaller than these are not worth stating, however large in percentage terms (0 vs 1 mile).
+const MIN_GAP: Record<string, number> = { envNew: 5, newTrack: 5, mountain: 5, length: 10, envMiles: 5, tripTime: 10 };
+
 function better(m: Metric, a: number, b: number): boolean {
+  if (Math.abs(a - b) < (MIN_GAP[m.id] ?? 0)) return false;
   if (m.direction === "lower") return a < b * (1 - MEANINGFUL);
   return a > b * (1 + MEANINGFUL);
 }
@@ -35,7 +39,10 @@ function strengths(routes: RouteResult[], i: number): string[] {
     out.push(`it uses existing rail corridors for ${pct(r.stats.row_reuse_pct)} of its length`);
   if (beatsAll("popStations")) out.push(`it has the most residents near its stations (${people(r.stats.pop_near_stations)})`);
   if (beatsAll("envNew")) out.push(`it puts the least new track in flagged areas (${miles(r.stats.env_miles_new)})`);
-  if (beatsAll("length", "lower")) out.push(`it is the shortest alignment (${miles(r.stats.length_miles)}); travel time is not modeled`);
+  if (beatsAll("riders")) out.push(`it draws the most riders (about ${people(METRIC.riders.get(r))} a year, median)`);
+  if (beatsAll("tripTime")) out.push(`it has the shortest train time end to end (${hm(METRIC.tripTime.get(r))})`);
+  if (beatsAll("subsidy")) out.push(`it needs the least operating subsidy (${money(METRIC.subsidy.get(r))} a year, median)`);
+  if (beatsAll("length", "lower")) out.push(`it is the shortest alignment (${miles(r.stats.length_miles)})`);
   if (beatsAll("stations")) out.push(`it reaches the most cities (${r.stats.stations.length} stations)`);
   return out;
 }
@@ -51,6 +58,9 @@ export function tradeoffs(routes: RouteResult[], i: number): string[] {
     ["cost", "costs less", usd],
     ["duration", "opens sooner", years],
     ["envNew", "puts less new track in flagged areas", miles],
+    ["riders", "draws more riders", people],
+    ["tripTime", "is faster end to end", hm],
+    ["subsidy", "needs less operating subsidy", money],
   ];
   for (const [id, phrase, fmt] of checks) {
     const m = METRIC[id];
@@ -71,6 +81,7 @@ export interface DecisionSummary {
   reasons: string[];
   tradeoffs: string[];
   unresolved: string[];
+  service: string | null;
   nextStep: string;
 }
 
@@ -83,13 +94,32 @@ export function decisionSummary(plan: PlanResult, weights: Weights): DecisionSum
   const d = L.simulation.duration;
   const reasons = strengths(routes, li).slice(0, 3);
   if (!reasons.length) reasons.push("it balances the weighted measures best, without leading on any single one");
-  const unresolved = [
-    "Travel time, frequency and ridership are not modeled, so this ranking cannot show whether the service would be useful to travelers.",
-    L.stats.row_reuse_pct >= 50
-      ? "Running on existing rail corridors requires access agreements and spare capacity from host railroads, neither of which is assessed."
-      : `It needs ${miles(L.stats.miles_new)} of new right-of-way; land, structures and environmental review are only roughly costed.`,
-    "Operating costs, fares and the annual public support required are not estimated.",
-  ];
+  const sv = L.service && L.service.available ? L.service : null;
+  const unresolved: string[] = [];
+  if (sv && sv.riders) {
+    unresolved.push(
+      `Ridership is a preliminary estimate: about ${people(sv.riders.p50)} a year, but anywhere from ${people(sv.riders.p10)} to ${people(sv.riders.p90)} in the middle 80% of simulations.`,
+    );
+  } else {
+    unresolved.push("Service estimates are not available for this alternative.");
+  }
+  unresolved.push(
+    sv && sv.freight_share >= 0.3
+      ? `About ${pct(sv.freight_share * 100)} of the route is on freight-owned track; access terms, capacity and reliability there are not assessed.`
+      : L.stats.row_reuse_pct >= 50
+        ? "Running on existing rail corridors requires access agreements and spare capacity from host railroads, neither of which is assessed."
+        : `It needs ${miles(L.stats.miles_new)} of new right-of-way; land, structures and environmental review are only roughly costed.`,
+  );
+  if (sv && sv.subsidy) {
+    unresolved.push(
+      sv.subsidy.p50 > 0
+        ? `Operations would need about ${usd(sv.subsidy.p50)} a year in public support (median), which needs a committed funding source.`
+        : `Fares could cover operating costs in the median case, but the range runs from ${money(sv.subsidy.p10)} to ${money(sv.subsidy.p90)} a year.`,
+    );
+  }
+  const service = sv
+    ? `Assumed service: ${sv.round_trips} trains a day each way; ${L.stats.stations[0]} to ${L.stats.stations[L.stats.stations.length - 1]} in ${hm(sv.end_to_end_min)} by train (${hm(sv.end_to_end_car_min)} by car).`
+    : null;
   const corridorId = L.funding.find((m) => m.program_id === "corridor_id" && m.eligible);
   return {
     leader: L,
@@ -100,6 +130,7 @@ export function decisionSummary(plan: PlanResult, weights: Weights): DecisionSum
     reasons,
     tradeoffs: tradeoffs(routes, li).slice(0, 2),
     unresolved,
+    service,
     nextStep: corridorId
       ? "Next step: enter the corridor in FRA's Corridor ID program and fund a service development plan covering service, ridership, operations and host-railroad capacity."
       : "Next step: commission a service development plan covering service, ridership, operations and host-railroad capacity.",
@@ -133,7 +164,11 @@ export function suggestedQuestions(plan: PlanResult, selected: number): string[]
     qs.push(`Why does ${r[slow].label} take longer to open than ${r[fast].label}?`);
   const short = bestIndex(r, METRIC.length, false);
   if (short >= 0 && cheap >= 0 && short !== cheap) qs.push(`${r[short].label} is the shortest. Why doesn't it cost the least?`);
+  const sv = r[selected].service;
+  if (sv && sv.available && sv.riders) qs.push(`What drives ridership on ${r[selected].label}, and how reliable is that estimate?`);
+  if (sv && sv.available && sv.bcr)
+    qs.push(`Why is the benefit-cost ratio of ${r[selected].label} ${sv.bcr.p50 < 1 ? "below" : "above"} 1?`);
   qs.push(`What drives the uncertainty in the cost of ${r[selected].label}?`);
   qs.push(`Which funding programs fit ${r[selected].label}, and what would remain for state and local sponsors?`);
-  return qs.slice(0, 4);
+  return qs.slice(0, 5);
 }

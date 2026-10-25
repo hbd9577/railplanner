@@ -112,6 +112,13 @@ def route_metrics(c: Candidate, g: Grid | None = None) -> dict:
     terrain = _classify(L["slope_mean"][r, col], SLOPE_CLASSES)
     density = _classify(L["pop"][r, col], DENSITY_CLASSES)
     seg_counts = Counter(zip(treatment, terrain, density))
+    # Track profile along the route: runs of constant treatment and terrain, in route miles. The
+    # service model integrates running speed over it.
+    profile, start = [], 0
+    for i in range(1, n + 1):
+        if i == n or treatment[i] != treatment[start] or terrain[i] != terrain[start]:
+            profile.append([round(start * miles_per_cell, 2), round(i * miles_per_cell, 2), str(treatment[start]), str(terrain[start])])
+            start = i
     segments = [SegmentMiles(treatment=t, terrain=te, density=d, miles=round(k * miles_per_cell, 2))
                 for (t, te, d), k in sorted(seg_counts.items())]
 
@@ -145,6 +152,7 @@ def route_metrics(c: Candidate, g: Grid | None = None) -> dict:
         "river_crossings_new": _entries(river & ~on_row),
         "stations": stations,
         "segments": segments,
+        "track_profile": profile,
     }
 
 
@@ -190,6 +198,7 @@ def score_routes(metrics: list[dict]) -> list[RouteStats]:
             miles_new_mountainous=round(m["miles_new_mountainous"], 1),
             env_miles=m["env_miles"],
             env_miles_new=round(m["env_miles_new"], 1),
+            track_profile=m["track_profile"],
             stations=m["stations"],
             segments=m["segments"],
             score=round(score, 1),

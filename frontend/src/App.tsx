@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ApiError, api, type City, type PlanResult } from "./api";
+import { ApiError, DEFAULT_SERVICE, api, type City, type PlanResult, type ServicePlan } from "./api";
 import AltCards from "./components/AltCards";
 import BaselinePanel from "./components/BaselinePanel";
 import ComparisonTab from "./components/ComparisonTab";
@@ -17,6 +17,7 @@ import { CorridorControls, ScenarioActions, type ToolbarProps } from "./componen
 import { DEFAULT_WEIGHTS, encodeWeights as encodeW, rank, weightsEqual, type Weights } from "./scoring";
 import {
   download,
+  encodeService,
   loadScenarios,
   printDocument,
   queryFor,
@@ -62,6 +63,9 @@ export default function App() {
   const [fit, setFit] = useState<FitRequest>({ kind: "all", n: 0 });
   const [saved, setSaved] = useState<Scenario[]>(() => loadScenarios());
   const [message, setMessage] = useState<string | null>(null);
+  const [servicePlan, setServicePlan] = useState<ServicePlan>(initial.current.svc ?? { ...DEFAULT_SERVICE });
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [serviceError, setServiceError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [lastAttempt, setLastAttempt] = useState<{ o: number; d: number; fresh: boolean } | null>(null);
   const [savedSig, setSavedSig] = useState<string | null>(null);
@@ -83,9 +87,47 @@ export default function App() {
   // Keep the address bar in step with the scenario so Share and reload reproduce it.
   useEffect(() => {
     if (!plan) return;
-    const q = queryFor({ from: plan.origin.id, to: plan.destination.id, sel: plan.routes[selected]?.key, tab, w: weightsEqual(weights, DEFAULT_WEIGHTS) ? undefined : weights });
+    const q = queryFor({
+      from: plan.origin.id,
+      to: plan.destination.id,
+      sel: plan.routes[selected]?.key,
+      tab,
+      w: weightsEqual(weights, DEFAULT_WEIGHTS) ? undefined : weights,
+      svc: servicePlan,
+    });
     window.history.replaceState(null, "", q);
-  }, [plan, selected, tab, weights]);
+  }, [plan, selected, tab, weights, servicePlan]);
+
+  // Re-run the service model when the service plan differs from the one the plan's estimates used.
+  const planCorridor = plan ? `${plan.origin.id}-${plan.destination.id}` : null;
+  const planService = plan?.routes[0]?.service;
+  const serviceStale =
+    !!plan &&
+    !!planService &&
+    (planService.round_trips !== servicePlan.round_trips ||
+      planService.max_mph_existing !== servicePlan.max_mph_existing ||
+      planService.max_mph_new !== servicePlan.max_mph_new);
+  useEffect(() => {
+    if (!plan || !serviceStale) return;
+    const corridor = planCorridor;
+    const t = setTimeout(() => {
+      setServiceLoading(true);
+      setServiceError(null);
+      api
+        .service(plan.origin.id, plan.destination.id, servicePlan)
+        .then((res) =>
+          setPlan((p) =>
+            p && `${p.origin.id}-${p.destination.id}` === corridor
+              ? { ...p, routes: p.routes.map((r, i) => ({ ...r, service: res.routes[i] ?? r.service })) }
+              : p,
+          ),
+        )
+        .catch((e) => setServiceError(e instanceof Error ? `Could not re-run the service model (${e.message}).` : "Could not re-run the service model."))
+        .finally(() => setServiceLoading(false));
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planCorridor, serviceStale, encodeService(servicePlan)]);
 
   useEffect(() => {
     if (!message) return;
@@ -147,8 +189,9 @@ export default function App() {
   const upToDate = !!plan && plan.origin.id === originId && plan.destination.id === destId;
   const corridorName = plan ? `${plan.origin.name}–${plan.destination.name}` : "";
 
-  const sigOf = (from: number, to: number, sel: string, w: Weights) => JSON.stringify([from, to, sel, encodeW(w)]);
-  const currentSig = plan ? sigOf(plan.origin.id, plan.destination.id, plan.routes[selected]?.key ?? "", weights) : null;
+  const sigOf = (from: number, to: number, sel: string, w: Weights, svc: ServicePlan) =>
+    JSON.stringify([from, to, sel, encodeW(w), encodeService(svc)]);
+  const currentSig = plan ? sigOf(plan.origin.id, plan.destination.id, plan.routes[selected]?.key ?? "", weights, servicePlan) : null;
   const unsaved = savedSig != null && currentSig !== savedSig;
 
   function save() {
@@ -159,12 +202,13 @@ export default function App() {
       to: plan.destination.id,
       sel: plan.routes[selected].key,
       w: weights,
+      svc: servicePlan,
       savedAt: new Date().toISOString(),
     };
     const next = [s, ...saved];
     if (storeScenarios(next)) {
       setSaved(next);
-      setSavedSig(sigOf(s.from, s.to, s.sel, s.w));
+      setSavedSig(sigOf(s.from, s.to, s.sel, s.w, servicePlan));
       setMessage("Scenario saved in this browser.");
     } else {
       setMessage("Could not save: browser storage is unavailable (for example in a private window).");
@@ -174,7 +218,9 @@ export default function App() {
   function loadScenario(s: Scenario) {
     const w = { ...DEFAULT_WEIGHTS, ...s.w };
     setWeights(w);
-    setSavedSig(sigOf(s.from, s.to, s.sel, w));
+    const svc = s.svc ?? { ...DEFAULT_SERVICE };
+    setServicePlan(svc);
+    setSavedSig(sigOf(s.from, s.to, s.sel, w, svc));
     runPlan(s.from, s.to, false, s.sel);
   }
 
@@ -184,6 +230,7 @@ export default function App() {
     setOriginId(null);
     setDestId(null);
     setWeights({ ...DEFAULT_WEIGHTS });
+    setServicePlan({ ...DEFAULT_SERVICE });
     setSelected(0);
     setTab("overview");
     setBaseline(null);
@@ -403,7 +450,17 @@ export default function App() {
                 <AltCards routes={plan.routes} selected={selected} leader={leader ?? 0} onSelect={setSelected} />
               </div>
             )}
-            {tab === "service" && <ServiceTab plan={plan} selected={selected} onSelect={setSelected} />}
+            {tab === "service" && (
+              <ServiceTab
+                plan={plan}
+                selected={selected}
+                onSelect={setSelected}
+                servicePlan={servicePlan}
+                onServicePlan={setServicePlan}
+                serviceLoading={serviceLoading}
+                serviceError={serviceError}
+              />
+            )}
             {tab === "comparison" && (
               <ComparisonTab routes={plan.routes} selected={selected} leader={leader ?? 0} onSelect={setSelected} />
             )}
@@ -424,7 +481,7 @@ export default function App() {
                 <section className="panel">
                   <ProposalPanel
                     requestId={plan.request_id}
-                    scenario={scenarioPayload(plan, weights, selected)}
+                    scenario={scenarioPayload(plan, weights, selected, servicePlan)}
                     suggestions={suggestedQuestions(plan, selected)}
                     fileStem={fileStem}
                   />

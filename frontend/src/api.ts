@@ -92,6 +92,105 @@ export interface FundingMatch {
   cost_share: CostShare;
 }
 
+export interface Range {
+  p10: number;
+  p50: number;
+  p90: number;
+}
+
+export interface ServicePair {
+  a: string;
+  b: string;
+  straight_miles: number;
+  rail_miles: number;
+  train_min: number;
+  rail_door_min: number;
+  car_min: number;
+  air_min: number | null;
+  trips: number;
+}
+
+/** Preliminary service, demand, finance and benefit-cost estimates (backend/app/service.py). */
+export interface ServiceResult {
+  available: boolean;
+  note: string;
+  round_trips: number;
+  max_mph_existing: number;
+  max_mph_new: number;
+  headway_min: number;
+  stations: number;
+  end_to_end_min: number;
+  avg_speed_mph: number;
+  end_to_end_car_min: number;
+  pairs: ServicePair[];
+  share_pairs_faster_than_car: number;
+  riders: Range | null;
+  passenger_miles: Range | null;
+  revenue: Range | null;
+  opex: Range | null;
+  subsidy: Range | null;
+  load_factor: number;
+  capacity_limited_share: number;
+  train_miles: number;
+  trainsets: number;
+  fleet_cost: Range | null;
+  bcr: Range | null;
+  npv: Range | null;
+  pv_benefits: Range | null;
+  pv_costs: Range | null;
+  bcr_alt: Range | null;
+  npv_alt: Range | null;
+  user_benefit: Range | null;
+  safety_benefit: Range | null;
+  co2_tonnes: Range | null;
+  fatalities_avoided: Range | null;
+  car_vmt_avoided: Range | null;
+  public_share: number;
+  freight_share: number;
+  inactive_share: number;
+  off_rail_share: number;
+  single_track_share: number | null;
+  track_count_known_share: number;
+  calibration_error: number;
+}
+
+export interface ServicePlan {
+  round_trips: number;
+  max_mph_existing: number;
+  max_mph_new: number;
+}
+
+export const DEFAULT_SERVICE: ServicePlan = { round_trips: 8, max_mph_existing: 90, max_mph_new: 125 };
+
+export interface ServiceParameter {
+  value: number | number[] | null;
+  low?: number;
+  high?: number;
+  unit: string;
+  basis: "verified" | "derived" | "assumption";
+  note?: string;
+  source?: string;
+  url?: string;
+  editable?: boolean;
+}
+
+export interface DemandCalibration {
+  scale: number;
+  time_ratio_exponent: number;
+  distance_decay: number;
+  rms_log_error: number;
+  loo_rms_log_error: number;
+  stations: { name: string; observed: number; modeled: number; ratio: number }[];
+  pairs_used: number;
+  note: string;
+}
+
+export interface ServiceParametersResponse {
+  parameters: { checked_on: string; params: Record<string, ServiceParameter> };
+  calibration: DemandCalibration;
+  observed: { station_ridership: Record<string, number>; sources: { label: string; url: string }[] };
+}
+
 export interface RouteResult {
   id: number | null;
   rank: number;
@@ -102,6 +201,7 @@ export interface RouteResult {
   stats: RouteStats;
   simulation: SimulationSummary;
   funding: FundingMatch[];
+  service?: ServiceResult | null;
 }
 
 export interface PlanResult {
@@ -165,6 +265,7 @@ export interface ScenarioPayload {
   excluded_priorities: string[];
   selected: string | null;
   is_default: boolean;
+  service: ServicePlan | null;
 }
 
 export class ApiError extends Error {
@@ -196,6 +297,12 @@ export const api = {
     request<{ features?: Record<string, boolean> }>("/health").then((h) => h.features ?? {}),
   demoPairs: () => request<DemoPair[]>("/demo-pairs"),
   fundingPrograms: () => request<FundingProgram[]>("/funding-programs"),
+  service: (origin_id: number, dest_id: number, plan: ServicePlan) =>
+    request<{ routes: ServiceResult[] }>("/service", {
+      method: "POST",
+      body: JSON.stringify({ origin_id, dest_id, ...plan }),
+    }),
+  serviceParameters: () => request<ServiceParametersResponse>("/service-parameters"),
   plan: (origin_id: number, dest_id: number, fresh = false) =>
     request<PlanResult>(`/plan${fresh ? "?fresh=true" : ""}`, {
       method: "POST",

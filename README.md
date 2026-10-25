@@ -7,9 +7,10 @@ protected-land data, runs 5,000 Monte Carlo simulations of cost and schedule per
 Data), ranks them under priorities you can adjust, screens federal funding fit, and drafts a proposal with
 Gemini that is checked so it cannot introduce numbers of its own.
 
-It is a screening tool and says what it does not know: train service, travel time, ridership, capacity and
-operating cost are not modeled, and every figure is labeled as calculated, approximate, an illustrative
-estimate, rule-based, or not modeled.
+It is a screening tool and says what it knows and does not: a preliminary service model estimates train
+times, ridership (calibrated to Amtrak's FY2024 station ridership), operating cost and subsidy, fleet, CO2,
+road safety and a benefit-cost ratio, each with its range; timetables, reliability and line capacity are still
+not modeled. Every figure carries a status label.
 
 **Live demo:** http://45.77.76.26 · New York → Chicago: http://45.77.76.26/?from=1&to=33
 
@@ -26,7 +27,8 @@ estimate, rule-based, or not modeled.
 | Choose a corridor | Type an origin and destination (17 cities from New York to Chicago), or pick two cities on the map | `frontend/src/components/Toolbar.tsx` |
 | Generate alternatives | Least-cost paths on a 1 km grid with three strategies: upgrade existing rail, a new direct alignment, and a route via intermediate cities within a 25% detour (or named corridor templates for long routes, e.g. the Lake Shore vs Pennsylvania routes for NYC–Chicago) | `backend/app/routing.py` |
 | Measure | Length, share on existing rail, new-track miles (and in mountainous terrain), stations in route order, residents near stations (10 km, counted once) and near the line (10 mi), flagged miles on new track, river crossings | `backend/app/scoring.py`, `frontend/src/metrics.ts` |
-| Rank | Adjustable weights on cost, delivery, residents near stations, new track in flagged areas and new right-of-way; the ranking, its explanation and the decision summary update live and travel with saved, shared and exported scenarios | `frontend/src/scoring.ts`, `frontend/src/summary.ts` |
+| Service and demand | For an editable service plan (daily round trips, top speeds): running times over each alignment's track profile; door-to-door times against driving and flying; ridership by station pair from a gravity model fitted to FY2024 Amtrak ridership at 12 stations (leave-one-out error shown); fare revenue and operating cost from Amtrak's FY2024 route results; trainsets; CO2 and road deaths avoided; a benefit-cost ratio with USDOT 2026 values (7%, with 3.1% as a sensitivity); share of the route on freight-owned and single track. Uncertain inputs are sampled 2,000 times and reported as P10/P50/P90 | `backend/app/service.py`, `backend/data/service_parameters.json`, `backend/data/observed_rail.json`, `backend/scripts/calibrate_demand.py` |
+| Rank | Adjustable weights on capital cost, delivery, riders, train time, operating subsidy, new track in flagged areas, residents near stations and new right-of-way; the ranking, its explanation and the decision summary update live and travel with saved, shared and exported scenarios | `frontend/src/scoring.ts`, `frontend/src/summary.ts` |
 | Simulate | 5,000 PERT/triangular Monte Carlo runs of capital cost and time to opening per alternative, bulk-loaded into a TimescaleDB hypertable; P10/P50/P90 and histograms are read back from a continuous aggregate | `backend/app/simulation.py`, `backend/sql/schema.sql` |
 | Funding guide | Rule-based screening and qualitative fit against six federal programs (FSP-National, FSP-NEC, CRISI, BUILD, RRIF, Corridor ID). Each program lists applicants, stage, match, limits, round status, official source, verification date and a next step; assumed award sizes are labeled as RailPlanner assumptions and amounts are never summed | `backend/app/funding.py`, `backend/data/funding_programs.json` |
 | Draft a proposal | Gemini writes the sections (service assumptions, alternatives and tradeoffs, a recommendation conditional on the active priorities, uncertainty, funding, risks and gaps, next steps) from a payload of pre-formatted figures; a number check rejects any figure not in the payload, retries once, then falls back to a template draft. A scenario record and source list are appended by code. Drafts can be edited, then downloaded as Markdown or saved as PDF | `backend/app/proposal.py` |
@@ -39,8 +41,9 @@ estimate, rule-based, or not modeled.
 
 A toolbar holds the corridor, **Compare routes**, priorities, assumptions and Save / Share / Export. Tabs:
 **Overview** (decision summary generated from the active scenario, map with legend and ordered stations,
-alternative cards with what each gains and gives up), **Service & demand** (what is not modeled and why it
-matters; population vs access vs ridership), **Comparison** (one grouped table with preferred direction,
+alternative cards with what each gains and gives up), **Service & demand** (the service plan, train times,
+ridership, finances and fleet for each alternative, station pairs against driving and flying, the
+ridership fit against Amtrak data, and what is still not modeled), **Comparison** (one grouped table with preferred direction,
 status, definitions on demand and differences from a chosen baseline), **Costs & schedule** (P10/P50/P90
 explained, histograms, budget and opening-date checks, what the estimates include and exclude),
 **Impacts**, **Funding**, **Proposal & questions** (suggested questions generated from the results), and
@@ -261,8 +264,11 @@ Route maps generated by `scripts/plot_routes.py` (hillshade, existing rail, prot
 
 ## Limitations
 
-- Train service is not modeled: no travel times, frequency, ridership, reliability, capacity or operating
-  cost, and no benefit-cost ratio. The ranking compares construction and access measures only.
+- Service estimates are preliminary. Running times use top speeds and an average-speed factor, not a train
+  performance simulation; every train stops everywhere; there is no timetable, time-of-day pattern,
+  reliability or line-capacity analysis. Ridership comes from a sketch gravity model fitted to 12 stations
+  (in-sample error about a factor of 1.5, leave-one-out about 1.8), so its ranges are wide. The benefit-cost
+  ratio leaves out injuries, pollutants, wider economic effects and residual value, and is conservative.
 - Costs are illustrative: per-mile benchmarks are placeholders, not calibrated to any project. No cost year
   or escalation; rolling stock, facilities, electrification and host-railroad access payments are excluded.
 - Being on an existing rail corridor does not imply access, spare capacity or track suitable for passenger

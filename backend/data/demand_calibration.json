@@ -1,0 +1,83 @@
+{
+ "scale": 171030.45182616342,
+ "time_ratio_exponent": 2.1,
+ "distance_decay": 0.2,
+ "rms_log_error": 0.425,
+ "loo_rms_log_error": 0.574,
+ "stations": [
+  {
+   "name": "Poughkeepsie",
+   "observed": 139276,
+   "modeled": 152754,
+   "ratio": 1.1
+  },
+  {
+   "name": "Albany",
+   "observed": 899048,
+   "modeled": 399050,
+   "ratio": 0.44
+  },
+  {
+   "name": "Utica",
+   "observed": 78717,
+   "modeled": 81342,
+   "ratio": 1.03
+  },
+  {
+   "name": "Syracuse",
+   "observed": 160301,
+   "modeled": 141170,
+   "ratio": 0.88
+  },
+  {
+   "name": "Rochester",
+   "observed": 158640,
+   "modeled": 204309,
+   "ratio": 1.29
+  },
+  {
+   "name": "Buffalo",
+   "observed": 177976,
+   "modeled": 219965,
+   "ratio": 1.24
+  },
+  {
+   "name": "Erie",
+   "observed": 18035,
+   "modeled": 21658,
+   "ratio": 1.2
+  },
+  {
+   "name": "Cleveland",
+   "observed": 58930,
+   "modeled": 66108,
+   "ratio": 1.12
+  },
+  {
+   "name": "Toledo",
+   "observed": 44814,
+   "modeled": 65335,
+   "ratio": 1.46
+  },
+  {
+   "name": "South Bend",
+   "observed": 22769,
+   "modeled": 35982,
+   "ratio": 1.58
+  },
+  {
+   "name": "Harrisburg",
+   "observed": 362208,
+   "modeled": 435964,
+   "ratio": 1.2
+  },
+  {
+   "name": "Pittsburgh",
+   "observed": 136816,
+   "modeled": 51935,
+   "ratio": 0.38
+  }
+ ],
+ "pairs_used": 71,
+ "note": "Fitted to FY2024 Amtrak boardings plus alightings at 12 stations; New York, Philadelphia and Chicago are excluded because most of their riders use other services. Known misses: Albany and Pittsburgh also have trains to places outside this network; Lake Shore Limited stations west of Buffalo are served overnight, which the model does not represent."
+}

@@ -19,13 +19,14 @@ from .funding import load_programs, match_route
 from .models import City, FundingMatch, PlanResult, RouteResult, RouteStats
 from .routing import generate_candidates, load_cities, load_grid
 from .scoring import BUFFER_MILES, route_metrics, score_routes
+from .service import evaluate as evaluate_service
 from .simulation import run_simulation, summarize_from_db, summarize_local, write_runs
 
 log = logging.getLogger(__name__)
 
 # Bump when routing/scoring/simulation changes what a plan contains; older stored plans and demo
 # caches are then recomputed instead of being served.
-MODEL_VERSION = "2026.10.25-3"
+MODEL_VERSION = "2026.10.25-4"
 
 
 def assumptions(runs: int) -> list[str]:
@@ -103,6 +104,7 @@ def run_plan(origin_id: int, dest_id: int, runs: int | None = None, persist: boo
                                   funding=match_route(s, sim.cost.p50)))
     if request_id is not None:
         _persist_funding(routes)
+    attach_service(routes)
 
     return PlanResult(model_version=MODEL_VERSION, request_id=request_id, origin=origin, destination=dest, routes=routes,
                       assumptions=assumptions(runs), data_sources=load_grid().meta["sources"],
@@ -159,6 +161,15 @@ def _persist_funding(routes: list[RouteResult]) -> None:
 
 # ---------------------------------------------------------------- load
 
+def attach_service(routes: list[RouteResult], params=None) -> None:
+    """Service, demand and benefit-cost estimates (deterministic for a given plan and service plan)."""
+    for r in routes:
+        try:
+            r.service = evaluate_service(r, params)
+        except Exception as e:  # noqa: BLE001 - service estimates are optional; never block a plan
+            log.exception("service model failed for %s: %s", r.key, e)
+
+
 def load_plan(request_id: int) -> PlanResult | None:
     """Rebuild a stored plan; simulation summaries come fresh from the continuous aggregate."""
     with db.connection() as conn:
@@ -180,6 +191,7 @@ def load_plan(request_id: int) -> PlanResult | None:
                     funding=sorted(by_route.get(r["id"], []), key=lambda m: -m.fit_score))
         for r in rows
     ]
+    attach_service(routes)
     runs = routes[0].simulation.runs if routes else 0
     return PlanResult(model_version=MODEL_VERSION, request_id=request_id, origin=get_city(req["origin_city_id"]),
                       destination=get_city(req["dest_city_id"]), routes=routes, assumptions=assumptions(runs),
@@ -222,6 +234,8 @@ def load_demo_cache(origin: City, dest: City) -> PlanResult | None:
 
 def find_demo_cache_by_request(request_id: int) -> PlanResult | None:
     for p in DEMO_DIR.glob("*.json"):
+        if p.name.endswith(".proposal.json"):
+            continue  # cached proposal drafts live alongside the plans
         plan = PlanResult.model_validate_json(p.read_text(encoding="utf-8"))
         if plan.request_id == request_id:
             return plan.model_copy(update={"cached": True})

@@ -57,12 +57,24 @@ class Scenario(BaseModel):
     excluded_priorities: list[str] = []  # left out because a value is missing
     selected: str | None = None
     is_default: bool = True
+    service: dict | None = None  # {round_trips, max_mph_existing, max_mph_new}; None = default plan
+
+
+def apply_service_plan(plan: PlanResult, scenario: Scenario | None) -> PlanResult:
+    """Re-run service estimates for the scenario's service plan so drafts and answers match the screen."""
+    if scenario is None or not scenario.service:
+        return plan
+    from .service import ServiceParams, evaluate  # local import: service imports routing/scoring only
+
+    params = ServiceParams(**scenario.service)
+    routes = [r.model_copy(update={"service": evaluate(r, params)}) for r in plan.routes]
+    return plan.model_copy(update={"routes": routes})
 
 
 SERVICE_ASSUMPTIONS = [
-    "no train service plan has been defined: frequency, timetable, stopping pattern, speeds and fares are open",
+    "the service plan is a screening assumption (daily round trips and top speeds as stated), not a timetable",
     "a station is assumed at each of RailPlanner's cities within 5 km of an alignment; real station sites are not chosen",
-    "travel times are not estimated, so alignment length is not a measure of trip time",
+    "running times come from top speeds, an average-speed factor and stop penalties, not a train performance simulation",
     "trains on existing rail corridors would share track with freight under agreements that do not yet exist",
 ]
 
@@ -93,15 +105,17 @@ def people(n: float) -> str:
 
 # What the model does not cover; included in every payload so drafts and answers cannot imply it.
 NOT_MODELED = [
-    "service frequency, timetable and span of service",
-    "door-to-door or in-train travel time and travel-time competitiveness with driving, bus or air",
-    "ridership or station-pair demand forecasts",
-    "on-time performance and reliability",
-    "operating and maintenance costs, fare revenue and annual operating subsidy",
+    "a detailed timetable, time-of-day pattern and stopping pattern (every train is assumed to stop everywhere)",
+    "on-time performance and reliability on shared freight track",
     "track capacity, freight conflicts, train paths and access agreements with host railroads",
-    "rolling stock, maintenance facilities and electrification costs",
-    "benefit-cost ratio, emissions and safety outcomes",
+    "bus competition, and air competition beyond a simple airport-time comparison",
+    "electrification, maintenance facilities and mid-life overhauls",
+    "injury and property-damage crash benefits, criteria air pollutants and wider economic effects",
 ]
+
+PRELIMINARY = ("travel times, ridership, fare revenue, operating cost and subsidy, fleet size, benefit-cost ratio, "
+               "CO2 and fatalities avoided are preliminary model estimates with wide ranges; ridership is calibrated "
+               "to FY2024 Amtrak station ridership but its fit error is large")
 
 
 def _route_payload(r: RouteResult) -> dict:
@@ -123,6 +137,7 @@ def _route_payload(r: RouteResult) -> dict:
         "river_crossings": s.river_crossings,
         "capital_cost": {"low_P10": usd(c.p10), "median_P50": usd(c.p50), "high_P90": usd(c.p90)},
         "time_to_opening": {"low_P10": years(d.p10), "median_P50": years(d.p50), "high_P90": years(d.p90)},
+        "service": _service_payload(r),
         "funding_matches": [
             {
                 "program": m.program_name,
@@ -141,6 +156,35 @@ def _route_payload(r: RouteResult) -> dict:
 
 def _program_facts() -> dict:
     return {p["name"]: p.get("guide", {}) for p in load_programs()}
+
+
+def _service_payload(r: RouteResult) -> dict | None:
+    sv = r.service
+    if sv is None or not sv.available:
+        return None
+
+    def rng(x, fmt):
+        return {"low_P10": fmt(x.p10), "median_P50": fmt(x.p50), "high_P90": fmt(x.p90)}
+
+    def money(v):
+        return ("an operating surplus of " + usd(-v)) if v < 0 else usd(v)
+
+    co2 = sv.co2_tonnes.p50
+    return {
+        "service_plan": f"{sv.round_trips} daily round trips, top speed {sv.max_mph_existing:.0f} mph on existing rail "
+                        f"and {sv.max_mph_new:.0f} mph on new track, every train stops at every station",
+        "end_to_end_train_time": f"{sv.end_to_end_min / 60:.1f} hours",
+        "end_to_end_driving_time": f"{sv.end_to_end_car_min / 60:.1f} hours",
+        "station_pairs_where_rail_door_to_door_beats_driving": f"{sv.share_pairs_faster_than_car * 100:.0f}%",
+        "annual_riders": rng(sv.riders, people),
+        "annual_fare_revenue": rng(sv.revenue, usd),
+        "annual_operating_cost": rng(sv.opex, usd),
+        "annual_operating_subsidy_median": money(sv.subsidy.p50),
+        "trainsets_needed": sv.trainsets,
+        "benefit_cost_ratio_at_7_percent": rng(sv.bcr, lambda v: f"{v:.2f}"),
+        "co2_change_per_year_median": (f"{co2:,.0f} tonnes avoided" if co2 >= 0 else f"{-co2:,.0f} tonnes added"),
+        "share_on_freight_owned_track": f"{sv.freight_share * 100:.0f}%",
+    }
 
 
 def build_payload(plan: PlanResult, scenario: Scenario | None = None) -> dict:
@@ -169,6 +213,7 @@ def build_payload(plan: PlanResult, scenario: Scenario | None = None) -> dict:
         "alternatives": [_route_payload(r) for r in routes],
         "leaders_on_single_measures": leaders,
         "service_assumptions": SERVICE_ASSUMPTIONS,
+        "preliminary_estimates": PRELIMINARY,
         "not_modeled": NOT_MODELED,
         "assumptions_and_limitations": plan.assumptions,
         "funding_program_status": {
@@ -251,7 +296,9 @@ You receive a JSON payload of computed results. Rules, strictly:
   priorities, name those priorities, and say it is conditional on them (and a close call if the top two
   are close). Never call it "best" or imply feasibility, eligibility, ridership or value for money. If no
   ranking is given, describe tradeoffs only.
-- Service Assumptions: state plainly that no service plan exists and list the service assumptions.
+- Service Assumptions: state the assumed service plan and that it is not a timetable; list the service assumptions.
+- Ridership, revenue, subsidy, benefit-cost ratio and CO2 are preliminary estimates: always give the P10 to P90
+  range with the median, and say the ridership fit error is large.
 - Cost, Schedule and Uncertainty: give P10, median (P50) and P90 and explain that P10 to P90 is the
   middle 80% of modeled outcomes under the model's own assumptions, not a guarantee.
 - Funding Considerations: distinguish screening fit, program limits, assumed amounts and loans; nothing
@@ -333,6 +380,10 @@ def record_and_sources(plan: PlanResult, scenario: Scenario | None, model_versio
         lines.append("- Priorities: none supplied (no overall ranking)")
     if scenario and scenario.selected:
         lines.append(f"- Selected alternative: {scenario.selected}")
+    sv = next((r.service for r in plan.routes if r.service and r.service.available), None)
+    if sv:
+        lines.append(f"- Service plan: {sv.round_trips} daily round trips, top speed {sv.max_mph_existing:.0f} mph on "
+                     f"existing rail and {sv.max_mph_new:.0f} mph on new track")
     runs = plan.routes[0].simulation.runs if plan.routes else 0
     lines.append(f"- Plan {plan.request_id}, model version {model_version or 'unknown'}, {runs:,} simulations per alternative")
     lines.append(f"- Draft generated: {now}")
@@ -370,6 +421,14 @@ def template_proposal(payload: dict) -> str:
             f"- **Alternative {a['number']}: {a['name']}**: {a['length']}, {a['share_on_existing_rail_corridors']} on "
             f"existing rail corridors, {a['residents_near_stations']} residents near its stations. {a['approach']}"
         )
+        sv = a.get("service")
+        if sv:
+            rd = sv["annual_riders"]
+            lines.append(
+                f"  Modeled service ({sv['service_plan']}): end-to-end train time {sv['end_to_end_train_time']} "
+                f"against {sv['end_to_end_driving_time']} by car; {rd['median_P50']} riders a year "
+                f"(P10 {rd['low_P10']}, P90 {rd['high_P90']}); median operating subsidy {sv['annual_operating_subsidy_median']}."
+            )
     lines += ["", "## Recommendation Under the Stated Priorities", ""]
     if "leads_under_these_priorities" in scen:
         pri = ", ".join(scen["priorities_and_share_of_weight"]) or "no weighted priorities"
@@ -406,6 +465,7 @@ def generate_proposal(plan: PlanResult, scenario: Scenario | None = None, model_
 
     The number check covers the drafted text; the scenario record and sources appendix is appended
     afterwards by code."""
+    plan = apply_service_plan(plan, scenario)
     payload = build_payload(plan, scenario)
     appendix = record_and_sources(plan, scenario, model_version)
     prompt = "Draft the proposal from this payload.\n\n" + json.dumps(payload, indent=1, ensure_ascii=False)
@@ -453,6 +513,7 @@ QA_LENGTH = {
 
 def ask(question: str, plan: PlanResult, scenario: Scenario | None = None, detail: bool = False) -> dict:
     """Returns {answer, number_check}."""
+    plan = apply_service_plan(plan, scenario)
     payload = build_payload(plan, scenario)
     system = QA_PROMPT.replace("{length}", QA_LENGTH[detail])
     prompt = f"Payload:\n{json.dumps(payload, indent=1, ensure_ascii=False)}\n\nQuestion: {question.strip()}"

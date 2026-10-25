@@ -1,11 +1,21 @@
 // Metric registry: one definition per figure the app shows, with its provenance. Every table,
 // card, tooltip, export and the methodology page read from here, so labels and caveats stay consistent.
 import type { RouteResult } from "./api";
-import { miles, pct, people, usd, years } from "./format";
+import { count, hm, miles, money, pct, people, usd, years } from "./format";
 
 export type Status = "observed" | "assumption" | "estimate" | "screening" | "not-modeled" | "unavailable";
 export type Direction = "lower" | "higher" | "context";
-export type Group = "Service" | "Demand" | "Access" | "Infrastructure" | "Cost" | "Schedule" | "Impacts" | "Funding";
+export type Group =
+  | "Service"
+  | "Demand"
+  | "Access"
+  | "Infrastructure"
+  | "Cost"
+  | "Operations"
+  | "Benefits"
+  | "Schedule"
+  | "Impacts"
+  | "Funding";
 
 export const STATUS_LABEL: Record<Status, string> = {
   observed: "Observed",
@@ -50,6 +60,11 @@ const ALIGN = "The alignment is a conceptual least-cost path on 1 km cells, not 
 
 /** Missing values become NaN so they can never rank as the best (lowest) value. */
 const num = (v: number | null | undefined) => (typeof v === "number" && Number.isFinite(v) ? v : NaN);
+const svc = (r: RouteResult) => (r.service && r.service.available ? r.service : null);
+const SVC_SOURCE = "RailPlanner service model (data/service_parameters.json)";
+const SVC_COVERAGE = "Stations on this alignment";
+const SERVICE_PLAN =
+  "The service plan set on the Service tab (default 8 daily round trips, 90 mph on existing rail, 125 mph on new track); every train stops at every station.";
 const safe = (fmt: (v: number) => string) => (v: number) => (Number.isFinite(v) ? fmt(v) : "Not available");
 
 export const METRICS: Metric[] = [
@@ -196,6 +211,131 @@ export const METRICS: Metric[] = [
     get: (r) => num(r.stats.env_miles_new), fmt: safe(miles),
   },
   {
+    id: "tripTime", label: "End-to-end train time", short: "Train time", group: "Service", unit: "hours", direction: "lower",
+    status: "estimate",
+    definition: "Scheduled time from the first to the last station, including stops.",
+    source: SVC_SOURCE, dataYear: "Assumed speeds", coverage: "This alignment",
+    method: "Top speed by track type (lower on mountainous sections) times an average-speed factor, integrated over the alignment, plus a penalty per stop and per large-terminal approach.",
+    assumptions: SERVICE_PLAN,
+    uncertainty: "The average-speed factor (68-82% of top speed) is sampled; times vary by roughly 10% either way.",
+    limitations: "Not a train performance simulation: curves, grades, signals, freight traffic and dispatching are not modeled.",
+    get: (r) => num(svc(r)?.end_to_end_min), fmt: (v) => (Number.isFinite(v) ? hm(v) : "Not available"),
+  },
+  {
+    id: "beatsCar", label: "Station pairs where rail beats driving door to door", short: "Beats driving", group: "Service", unit: "%",
+    direction: "higher", status: "estimate",
+    definition: "Share of station pairs on the line where the train trip, including getting to and from stations and waiting, is no slower than driving.",
+    source: SVC_SOURCE, dataYear: "Assumed speeds", coverage: SVC_COVERAGE,
+    method: "Rail: train time + 50 minutes to reach and leave stations + a quarter of the headway. Car: straight-line miles x 1.15 at 60 mph + 15 minutes.",
+    assumptions: "Access time, road circuity and car speed are assumptions with ranges.",
+    uncertainty: "Pairs near the break-even point can flip either way.",
+    limitations: "Traffic congestion, parking cost and travel-time reliability are not represented.",
+    get: (r) => (svc(r) ? svc(r)!.share_pairs_faster_than_car * 100 : NaN), fmt: safe((v) => pct(v)),
+  },
+  {
+    id: "riders", label: "Annual riders (median)", short: "Riders", group: "Demand", unit: "trips per year", direction: "higher",
+    status: "estimate",
+    definition: "Modeled one-way trips per year between stations on this line, in the median simulation.",
+    source: "Demand model calibrated to Amtrak FY2024 station ridership", dataYear: "FY2024 ridership; 2020 Census",
+    coverage: SVC_COVERAGE,
+    method: "Trips between each station pair grow with the populations near both stations and with frequency, and fall as rail gets slower relative to the faster of driving or flying. Scale and sensitivities fitted to 12 Amtrak stations.",
+    assumptions: "Frequency elasticity 0.3-0.7; capped at an average load of 75% of seats; mature ridership (year 3 onward).",
+    uncertainty: "Wide: the middle 80% of simulated outcomes spans roughly half to double the median, from the leave-one-out fit error.",
+    limitations: "Not a mode-choice forecast: fares, time of day, transfers, bus competition and induced travel are not modeled separately.",
+    get: (r) => num(svc(r)?.riders?.p50), fmt: safe(people),
+  },
+  {
+    id: "revenue", label: "Annual fare revenue (median)", short: "Fare revenue", group: "Operations", unit: "US$ per year", direction: "higher",
+    status: "estimate",
+    definition: "Passenger-miles times fare revenue per passenger-mile.",
+    source: "Amtrak FY2024 route results (ticket revenue of $0.21-$0.38 per passenger-mile)", dataYear: "FY2024",
+    coverage: SVC_COVERAGE, method: "Modeled passenger-miles x sampled fare per passenger-mile.",
+    assumptions: "Fares like those on Amtrak routes in this region in FY2024.",
+    uncertainty: "Carries the full ridership uncertainty.", limitations: "No fare policy or yield management.",
+    get: (r) => num(svc(r)?.revenue?.p50), fmt: safe(usd),
+  },
+  {
+    id: "opex", label: "Annual operating cost (median)", short: "Operating cost", group: "Operations", unit: "US$ per year", direction: "lower",
+    status: "estimate",
+    definition: "Train-miles operated per year times fully allocated operating cost per train-mile.",
+    source: "Amtrak FY2024 route results (operating expense of $56-$98 per train-mile)", dataYear: "FY2024",
+    coverage: SVC_COVERAGE, method: "Daily round trips x 2 x route miles x 365 x sampled cost per train-mile.",
+    assumptions: SERVICE_PLAN, uncertainty: "About 25% either way, from the range of observed route costs.",
+    limitations: "Host-railroad access fees and new maintenance facilities are not itemized.",
+    get: (r) => num(svc(r)?.opex?.p50), fmt: safe(usd),
+  },
+  {
+    id: "subsidy", label: "Annual operating subsidy (median)", short: "Subsidy", group: "Operations", unit: "US$ per year", direction: "lower",
+    status: "estimate",
+    definition: "Operating cost minus fare revenue: the yearly support a state or sponsor would need. Negative means an operating surplus.",
+    source: SVC_SOURCE, dataYear: "FY2024 cost and fare levels", coverage: SVC_COVERAGE,
+    method: "Computed in each simulation, then the median taken.",
+    assumptions: SERVICE_PLAN, uncertainty: "Combines ridership, fare and cost uncertainty.",
+    limitations: "Excludes capital renewals and debt service.",
+    get: (r) => num(svc(r)?.subsidy?.p50), fmt: safe(money),
+  },
+  {
+    id: "trainsets", label: "Trainsets needed", group: "Operations", unit: "trainsets", direction: "lower", status: "estimate",
+    definition: "Trainsets to run the service plan, including spares.",
+    source: SVC_SOURCE, dataYear: "Assumed", coverage: "This alignment",
+    method: "Round-trip cycle time (two end-to-end trips plus 40-minute turnarounds) divided by the headway, plus 15% spares (at least one).",
+    assumptions: SERVICE_PLAN, uncertainty: "Small; depends on train time.", limitations: "No maintenance-cycle or peak planning.",
+    get: (r) => num(svc(r)?.trainsets), fmt: safe((v) => count(v)),
+  },
+  {
+    id: "bcr", label: "Benefit-cost ratio at 7% (median)", short: "Benefit-cost ratio", group: "Benefits", unit: "ratio", direction: "higher",
+    status: "estimate",
+    definition: "Present value of benefits divided by present value of costs over 30 years of operation, discounted at 7% as in USDOT's 2026 guidance. Above 1 means benefits exceed costs.",
+    source: "USDOT Benefit-Cost Analysis Guidance, 2026 update", dataYear: "2024 dollars",
+    coverage: "This alignment",
+    method: "Benefits: rule-of-half user savings against driving, fare revenue, and fatal crashes avoided on diverted car miles. Costs: capital (from the cost simulation), trainsets, operations and renewals.",
+    assumptions: "Capital spent over the last 60% of delivery; ridership ramps up over three years; 70% of riders would otherwise drive.",
+    uncertainty: "Combines cost, schedule and ridership uncertainty.",
+    limitations: "Omits injury and property-damage crashes, air pollutants, reliability, wider economic effects and residual value, so it is conservative. Carbon is not monetized under the 2026 guidance. Not an official benefit-cost analysis.",
+    get: (r) => num(svc(r)?.bcr?.p50), fmt: safe((v) => v.toFixed(2)),
+  },
+  {
+    id: "co2", label: "CO2 avoided per year (median)", short: "CO2 avoided", group: "Impacts", unit: "tonnes per year", direction: "higher",
+    status: "estimate",
+    definition: "Car CO2 avoided by riders who would otherwise drive, minus the diesel trains' own CO2. Negative means the service adds emissions.",
+    source: "US EPA (400 g CO2 per car-mile; 10,180 g per gallon of diesel); ORNL Transportation Energy Data Book (Amtrak energy per railcar-mile)",
+    dataYear: "EPA current; TEDB 2019", coverage: SVC_COVERAGE,
+    method: "Diverted car-miles x 400 g, minus train-miles x six cars x energy per railcar-mile converted to diesel.",
+    assumptions: "Diesel trains; 70% of riders would otherwise drive, at 1.52 people per car.",
+    uncertainty: "Follows ridership uncertainty.", limitations: "No electrification, credit for air trips avoided, or construction emissions.",
+    get: (r) => num(svc(r)?.co2_tonnes?.p50), fmt: safe((v) => `${count(v)} t`),
+  },
+  {
+    id: "fatalities", label: "Road deaths avoided per year (median)", short: "Deaths avoided", group: "Impacts", unit: "deaths per year",
+    direction: "higher", status: "estimate",
+    definition: "Expected traffic deaths avoided on car miles that shift to rail.",
+    source: "NHTSA 2023 (1.26 deaths per 100 million vehicle-miles)", dataYear: "2023", coverage: SVC_COVERAGE,
+    method: "Diverted car-miles x national fatality rate.",
+    assumptions: "The national average rate applies to these trips.", uncertainty: "Follows ridership uncertainty.",
+    limitations: "Injuries and grade-crossing risk are not included.",
+    get: (r) => num(svc(r)?.fatalities_avoided?.p50), fmt: safe((v) => v.toFixed(1)),
+  },
+  {
+    id: "freightShare", label: "Route on freight-owned track", short: "Freight-owned", group: "Infrastructure", unit: "%",
+    direction: "lower", status: "screening",
+    definition: "Share of the alignment within about 1 km of an active line owned by a freight railroad. A risk indicator for access terms, capacity and reliability, not a measure of them.",
+    source: "BTS NTAD North American Rail Network Lines (owner field)", dataYear: "NTAD current release", coverage: GRID,
+    method: "Points every mile along the alignment matched to the nearest NTAD line within about 1 km.",
+    assumptions: "Lines owned by Amtrak or commuter agencies count as passenger-owned.",
+    uncertainty: "Parallel lines can be matched to the wrong owner.", limitations: "Trackage rights and dispatching control are not represented.",
+    get: (r) => (svc(r) ? svc(r)!.freight_share * 100 : NaN), fmt: safe((v) => pct(v)),
+  },
+  {
+    id: "singleTrack", label: "Single-track share of existing rail used", short: "Single track", group: "Infrastructure", unit: "%",
+    direction: "lower", status: "screening",
+    definition: "Of the existing rail the alignment follows, the share recorded as single track. Single track limits how many trains can run.",
+    source: "BTS NTAD North American Rail Network Lines (track count field)", dataYear: "NTAD current release", coverage: GRID,
+    method: "Track count of the matched NTAD line, where recorded.",
+    assumptions: "Lines without a recorded track count are left out.",
+    uncertainty: "Track counts are missing for many lines.", limitations: "Sidings and passing loops are not counted.",
+    get: (r) => (svc(r)?.single_track_share != null ? svc(r)!.single_track_share! * 100 : NaN), fmt: safe((v) => pct(v)),
+  },
+  {
     id: "fundingTop", label: "Best federal program fit", group: "Funding", unit: "0–1", direction: "context",
     status: "screening",
     definition: "Highest qualitative fit among matched federal programs.",
@@ -221,34 +361,22 @@ export interface Gap {
 }
 
 export const NOT_MODELED: Gap[] = [
-  { id: "travelTime", label: "Door-to-door and in-train travel time", group: "Service",
-    why: "Decides whether rail competes with driving, bus or flying for each trip.",
-    needs: "Track geometry and speed limits, stopping pattern, rolling-stock performance, station access times and comparable times for other modes." },
-  { id: "frequency", label: "Frequency, span and timetable", group: "Service",
-    why: "Two trains a day and twelve trains a day are different services with different users.",
-    needs: "Service plan, fleet size, crew and maintenance windows, and host-railroad paths." },
-  { id: "demand", label: "Ridership and station-pair demand", group: "Demand",
-    why: "Population near a line is not passengers; revenue, benefits and subsidy all follow from demand.",
-    needs: "Travel survey or mobile data, a calibrated mode-choice model, fares and the service plan." },
-  { id: "competitiveness", label: "Travel-time competitiveness by station pair", group: "Demand",
-    why: "Intermediate city pairs often carry most of a corridor's trips.",
-    needs: "Travel times by station pair for rail, car, bus and air with consistent access assumptions." },
+  { id: "timetable", label: "Timetable, time of day and stopping patterns", group: "Service",
+    why: "Departure times and express versus local patterns decide which trips are practical; an overnight train serves few people.",
+    needs: "A timetable, stopping-pattern options and demand by time of day." },
   { id: "reliability", label: "Reliability and on-time performance", group: "Service",
-    why: "Shared track with freight is the main source of intercity delay in the US.",
+    why: "Shared track with freight is the main source of intercity delay in the US. Amtrak's FY2024 on-time performance on routes in this region ranged from 70% to 92%.",
     needs: "Operations simulation with freight traffic, dispatching rules and recovery time." },
-  { id: "capacity", label: "Capacity, freight conflicts and access agreements", group: "Infrastructure",
-    why: "Existing rail corridors are mostly privately owned; access, paths and added tracks drive cost and schedule.",
+  { id: "capacity", label: "Line capacity, freight conflicts and access agreements", group: "Infrastructure",
+    why: "Existing corridors are mostly freight-owned; added passenger trains often need sidings, second tracks and negotiated access.",
     needs: "Host-railroad traffic data, capacity modeling and negotiated access terms." },
-  { id: "operating", label: "Operating cost, revenue and annual subsidy", group: "Cost",
-    why: "Determines the ongoing public support a state or sponsor must commit to every year.",
-    needs: "Service plan, crew and fleet costs, maintenance-of-way costs, fares and ridership." },
-  { id: "lifecycle", label: "Lifecycle cost, rolling stock and facilities", group: "Cost",
-    why: "Trains, maintenance facilities, electrification and renewals are excluded from the capital estimate.",
-    needs: "Fleet plan, facility sites, traction power choice and an analysis period with renewals." },
-  { id: "bca", label: "Benefit-cost ratio and net present value", group: "Cost",
-    why: "Federal capital programs weigh public benefits against costs.",
-    needs: "Ridership, travel-time savings, safety and emissions effects, discount rate and analysis period." },
-  { id: "emissions", label: "Emissions, safety and resilience outcomes", group: "Impacts",
-    why: "Net climate and safety benefits depend on mode shift and operations, not on the alignment alone.",
-    needs: "Mode-shift estimates, energy and fuel mix, grade-crossing exposure, hazard data." },
+  { id: "competition", label: "Detailed competition with air, bus and driving", group: "Demand",
+    why: "Fares, parking costs, congestion and airline schedules shift demand between modes.",
+    needs: "A calibrated mode-choice model with fares and costs for every mode." },
+  { id: "facilities", label: "Electrification, maintenance facilities and overhauls", group: "Cost",
+    why: "These can add hundreds of millions of dollars and change emissions.",
+    needs: "A fleet plan, facility sites and a traction power choice." },
+  { id: "widerBenefits", label: "Injuries, air pollutants and wider economic effects", group: "Benefits",
+    why: "Left out of the benefit-cost ratio, which is therefore conservative.",
+    needs: "Crash data by severity, emission factors by mode, and regional economic analysis." },
 ];

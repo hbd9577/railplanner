@@ -1,6 +1,6 @@
 // Scenario state that survives a reload or a shared link: corridor, selected alternative, tab and
 // priority weights. Saved scenarios live in this browser only (localStorage).
-import type { PlanResult, ScenarioPayload } from "./api";
+import { DEFAULT_SERVICE, type PlanResult, type ScenarioPayload, type ServicePlan } from "./api";
 import { usd, years, people, miles, pct } from "./format";
 import { METRICS, NOT_MODELED, STATUS_LABEL } from "./metrics";
 import { DEFAULT_WEIGHTS, PRIORITIES, decodeWeights, encodeWeights, missingPriorities, rank, weightsEqual, type Weights } from "./scoring";
@@ -12,6 +12,7 @@ export interface Scenario {
   to: number;
   sel: string; // alternative key, stable across reruns
   w: Weights;
+  svc?: ServicePlan;
   savedAt: string;
 }
 
@@ -21,19 +22,41 @@ export interface UrlState {
   sel: string | null;
   tab: string | null;
   w: Weights | null;
+  svc: ServicePlan | null;
 }
+
+export function encodeService(p: ServicePlan): string {
+  return `${p.round_trips}.${p.max_mph_existing}.${p.max_mph_new}`;
+}
+
+export function decodeService(s: string | null): ServicePlan | null {
+  if (!s) return null;
+  const [rt, ex, nw] = s.split(".").map(Number);
+  if (![rt, ex, nw].every(Number.isFinite) || rt < 1 || rt > 40 || ex < 40 || ex > 125 || nw < 60 || nw > 220) return null;
+  return { round_trips: Math.round(rt), max_mph_existing: ex, max_mph_new: nw };
+}
+
+export const isDefaultService = (p: ServicePlan) => encodeService(p) === encodeService(DEFAULT_SERVICE);
 
 export function readUrl(): UrlState {
   const q = new URLSearchParams(window.location.search);
   const n = (k: string) => (q.get(k) && Number.isFinite(Number(q.get(k))) ? Number(q.get(k)) : null);
-  return { from: n("from"), to: n("to"), sel: q.get("sel"), tab: q.get("tab"), w: decodeWeights(q.get("w")) };
+  return {
+    from: n("from"),
+    to: n("to"),
+    sel: q.get("sel"),
+    tab: q.get("tab"),
+    w: decodeWeights(q.get("w")),
+    svc: decodeService(q.get("svc")),
+  };
 }
 
-export function queryFor(s: { from: number; to: number; sel?: string; tab?: string; w?: Weights }): string {
+export function queryFor(s: { from: number; to: number; sel?: string; tab?: string; w?: Weights; svc?: ServicePlan }): string {
   const q = new URLSearchParams({ from: String(s.from), to: String(s.to) });
   if (s.sel) q.set("sel", s.sel);
   if (s.tab && s.tab !== "overview") q.set("tab", s.tab);
   if (s.w) q.set("w", encodeWeights(s.w));
+  if (s.svc && !isDefaultService(s.svc)) q.set("svc", encodeService(s.svc));
   return `?${q.toString()}`;
 }
 
@@ -59,6 +82,12 @@ export function storeScenarios(xs: Scenario[]): boolean {
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
+
+function svcLine(plan: PlanResult): string {
+  const sv = plan.routes.find((r) => r.service && r.service.available)?.service;
+  if (!sv) return "";
+  return `<h2>Service plan used for estimates</h2><p>${sv.round_trips} daily round trips; top speed ${sv.max_mph_existing} mph on existing rail and ${sv.max_mph_new} mph on new track; every train stops at every station. Ridership, revenue, operating cost, subsidy, benefit-cost ratio and CO2 are preliminary model estimates (medians shown in the comparison above).</p>`;
+}
 
 /** A self-contained HTML report of the active scenario, including the weights used. */
 export function reportHtml(plan: PlanResult, weights: Weights, selected: number, link: string): string {
@@ -96,6 +125,7 @@ td{text-align:right}small{color:#6b7280;font-weight:400}.note{color:#4b5563;font
 <h2>Comparison</h2><table><tr><th>Measure</th>${th}</tr>${metricRows}</table>
 <h2>Cost and schedule ranges (P10 / P50 / P90)</h2><table><tr><th>Alternative</th><td>Cost P10</td><td>Cost P50</td><td>Cost P90</td><td>Opening P10</td><td>Opening P50</td><td>Opening P90</td></tr>${rangeRows}</table>
 <p class="note">Cost excludes rolling stock, maintenance facilities, electrification, host-railroad access payments, operating costs and financing. No cost year or escalation is applied.</p>
+${svcLine(plan)}
 <h2>Selected alternative: ${esc(sel.label)}</h2><p>${esc(sel.description)}</p>
 <p>${miles(sel.stats.length_miles)}; ${pct(sel.stats.row_reuse_pct)} on existing rail corridors; ${people(sel.stats.pop_near_stations)} residents within ${sel.stats.station_catchment_km} km of a station. Stations in order: ${sel.stats.station_miles.map((x) => esc(x.name)).join(", ")}.</p>
 <h2>Not modeled</h2><ul>${NOT_MODELED.map((g) => `<li><b>${esc(g.label)}.</b> ${esc(g.why)} <span class="note">Needs: ${esc(g.needs)}</span></li>`).join("")}</ul>
@@ -116,7 +146,7 @@ export function download(filename: string, content: string, type = "text/html"):
 }
 
 /** What the proposal and Q&A endpoints need to reflect the active scenario. */
-export function scenarioPayload(plan: PlanResult, weights: Weights, selected: number): ScenarioPayload {
+export function scenarioPayload(plan: PlanResult, weights: Weights, selected: number, svc: ServicePlan): ScenarioPayload {
   const ranked = rank(plan.routes, weights);
   const total = PRIORITIES.reduce((a, p) => a + (weights[p.id] ?? 0), 0) || 1;
   return {
@@ -125,7 +155,8 @@ export function scenarioPayload(plan: PlanResult, weights: Weights, selected: nu
     close_call: ranked.length > 1 && ranked[0].score - ranked[1].score < 3,
     excluded_priorities: missingPriorities(plan.routes).map((p) => p.label),
     selected: plan.routes[selected]?.label ?? null,
-    is_default: weightsEqual(weights, DEFAULT_WEIGHTS),
+    is_default: weightsEqual(weights, DEFAULT_WEIGHTS) && isDefaultService(svc),
+    service: isDefaultService(svc) ? null : svc,
   };
 }
 

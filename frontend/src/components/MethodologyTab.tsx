@@ -2,6 +2,7 @@ import type { PlanResult } from "../api";
 import { METRICS, NOT_MODELED, STATUS_HELP, type Status } from "../metrics";
 import type { Weights } from "../scoring";
 import PrioritiesPanel from "./PrioritiesPanel";
+import ServiceParametersPanel from "./ServiceParametersPanel";
 import { Direction, StatusChip } from "./ui";
 
 interface Props {
@@ -89,6 +90,8 @@ export default function MethodologyTab({ plan, weights, onWeights }: Props) {
           these inputs. Status labels and the limitations above are the honest substitute.
         </p>
       </section>
+
+      <ServiceParametersPanel />
 
       <div className="two-col">
         <section className="panel">

@@ -61,6 +61,7 @@ class RouteStats(BaseModel):
     miles_new_mountainous: float = 0  # new track in mountainous terrain (mean slope >= 8%)
     env_miles: dict[str, float] = {}  # miles of path inside each flag layer
     env_miles_new: float = 0.0  # miles inside any flag layer, off existing rail corridors (counted once)
+    track_profile: list[list] = []  # [start_mile, end_mile, treatment, terrain] runs along the route
     segments: list[SegmentMiles]
     score: float  # 0-100
     score_breakdown: ScoreBreakdown
@@ -115,6 +116,69 @@ class FundingMatch(BaseModel):
 
 # ---------------------------------------------------------------- plan
 
+class ServiceRange(BaseModel):
+    p10: float
+    p50: float
+    p90: float
+
+
+class ServicePair(BaseModel):
+    """One station pair on an alignment: times by mode and modeled annual trips (central case)."""
+    a: str
+    b: str
+    straight_miles: float
+    rail_miles: float
+    train_min: float
+    rail_door_min: float
+    car_min: float
+    air_min: float | None = None
+    trips: float
+
+
+class ServiceResult(BaseModel):
+    """Preliminary service, demand, finance and benefit-cost estimates (app/service.py)."""
+    available: bool
+    note: str = ""
+    round_trips: int = 0
+    max_mph_existing: float = 0
+    max_mph_new: float = 0
+    headway_min: float = 0
+    stations: int = 0
+    end_to_end_min: float = 0
+    avg_speed_mph: float = 0
+    end_to_end_car_min: float = 0
+    pairs: list[ServicePair] = []
+    share_pairs_faster_than_car: float = 0
+    riders: ServiceRange | None = None
+    passenger_miles: ServiceRange | None = None
+    revenue: ServiceRange | None = None
+    opex: ServiceRange | None = None
+    subsidy: ServiceRange | None = None
+    load_factor: float = 0
+    capacity_limited_share: float = 0  # share of simulations where demand exceeded the seats offered
+    train_miles: float = 0
+    trainsets: int = 0
+    fleet_cost: ServiceRange | None = None
+    bcr: ServiceRange | None = None
+    npv: ServiceRange | None = None
+    pv_benefits: ServiceRange | None = None
+    pv_costs: ServiceRange | None = None
+    bcr_alt: ServiceRange | None = None
+    npv_alt: ServiceRange | None = None
+    user_benefit: ServiceRange | None = None
+    safety_benefit: ServiceRange | None = None
+    co2_tonnes: ServiceRange | None = None
+    fatalities_avoided: ServiceRange | None = None
+    car_vmt_avoided: ServiceRange | None = None
+    public_share: float = 0
+    freight_share: float = 0
+    inactive_share: float = 0
+    off_rail_share: float = 0
+    single_track_share: float | None = None
+    track_count_known_share: float = 0
+    calibration_error: float = 0
+
+
 class RouteResult(BaseModel):
     id: int | None = None
     rank: int
@@ -125,6 +189,7 @@ class RouteResult(BaseModel):
     stats: RouteStats
     simulation: SimulationSummary
     funding: list[FundingMatch]
+    service: ServiceResult | None = None
 
 
 class PlanResult(BaseModel):

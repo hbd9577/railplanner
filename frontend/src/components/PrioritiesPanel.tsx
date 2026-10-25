@@ -146,11 +146,13 @@ export default function PrioritiesPanel({ routes, weights, onChange, onClose }: 
           </table>
           <p className="fine">
             How the score works: for each priority, the best alternative on that measure gets full points and the
-            others get points in proportion (best ÷ value for lower-is-better, value ÷ best for higher-is-better). Points
-            are then weighted and summed to 100. Scores are relative to these alternatives only. The score is a way to
-            express preferences, not a benefit-cost ratio, and it does not show that any alternative is feasible,
-            eligible for funding or worth building. Only one population measure is used, to avoid counting residents
-            twice; new track partly overlaps with cost, so it is off by default.
+            others get points in proportion (best ÷ value for lower-is-better, value ÷ best for higher-is-better; a
+            measure that can be negative, such as an operating surplus, is scaled linearly between the best and worst).
+            Points are then weighted and summed to 100. Scores are relative to these alternatives only. The score is a
+            way to express preferences, not a benefit-cost ratio, and it does not show that any alternative is
+            feasible, eligible for funding or worth building. Riders and residents near stations overlap, and new track
+            overlaps with capital cost, so residents and new track are off by default. Ridership, train time and
+            subsidy depend on the service plan on the Service tab.
           </p>
         </div>
       </div>

@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from . import funding, planner, proposal
+from . import funding, planner, proposal, service
 from .config import DATA_DIR, get_settings
 from .db import DBUnavailable
 from .models import City, PlanResult
@@ -134,6 +134,31 @@ def ask(request_id: int, body: AskRequest) -> dict:
     except proposal.GeminiUnavailable as e:
         log.warning("ask unavailable: %s", e)
         raise HTTPException(503, "Q&A is temporarily unavailable (the language model is busy). Try again shortly.")
+
+
+class ServiceRequest(service.ServiceParams):
+    origin_id: int
+    dest_id: int
+
+
+@router.post("/service")
+def recompute_service(body: ServiceRequest) -> dict:
+    """Re-run the service, demand and benefit-cost model for a corridor with a different service plan.
+    Uses the stored (or cached) plan for the corridor, so alignments and cost ranges do not change."""
+    if not 1 <= body.round_trips <= 40:
+        raise HTTPException(400, "round trips must be between 1 and 40 a day")
+    if not 40 <= body.max_mph_existing <= 125 or not 60 <= body.max_mph_new <= 220:
+        raise HTTPException(400, "top speeds must be 40-125 mph on existing rail and 60-220 mph on new track")
+    plan = create_plan(PlanRequest(origin_id=body.origin_id, dest_id=body.dest_id))
+    params = service.ServiceParams(**body.model_dump(include={"round_trips", "max_mph_existing", "max_mph_new"}))
+    return {"routes": [service.evaluate(r, params).model_dump() for r in plan.routes]}
+
+
+@router.get("/service-parameters")
+def service_parameters() -> dict:
+    """Inputs to the service model with sources, plus the demand calibration and its fit."""
+    return {"parameters": service.load_parameters(), "calibration": service.calibration(),
+            "observed": {k: service.observed()[k] for k in ("station_ridership", "sources", "services")}}
 
 
 @router.get("/funding-programs")

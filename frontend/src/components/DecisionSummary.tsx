@@ -1,5 +1,5 @@
-import type { PlanResult } from "../api";
-import { years, usd } from "../format";
+import type { PlanResult, RouteResult } from "../api";
+import { money, people, usd, years } from "../format";
 import { decisionSummary } from "../summary";
 import { PRIORITIES, missingPriorities, type Weights } from "../scoring";
 import { list } from "../format";
@@ -80,20 +80,24 @@ export default function DecisionSummary({ plan, weights, defaultWeights, onOpenP
         </>
       )}
 
+      <ServiceKpis r={s.leader} />
+
       <div className="callout">
-        <h3>Service not yet modeled</h3>
+        <h3>Service estimates are preliminary</h3>
         <p>
-          Frequency, travel time, ridership, capacity and operating subsidy are not estimated. A leading score here
-          does not show that the service would be useful, operable, fundable or feasible.{" "}
+          {s.service ?? "No service estimate is available for this alternative."} Ridership, fares, operating cost and
+          the benefit-cost ratio come from a sketch model calibrated to Amtrak's FY2024 ridership, with wide ranges.
+          Reliability, line capacity and timetables are still not modeled, so a leading score does not show the service
+          would be operable or fundable.{" "}
           <button className="link" onClick={() => onOpenTab("service")}>
-            What is missing
+            Service plan and estimates
           </button>
         </p>
       </div>
 
-      <h3>Open feasibility questions</h3>
+      <h3>Open questions</h3>
       <ul className="tight">
-        {s.unresolved.slice(1).map((u) => (
+        {s.unresolved.map((u) => (
           <li key={u}>{u}</li>
         ))}
       </ul>
@@ -141,9 +145,16 @@ export function HeroSummary({ plan, weights, defaultWeights, onOpenPriorities, o
           <li key={r}>{r[0].toUpperCase() + r.slice(1)}.</li>
         ))}
       </ul>
-      <p className="hero-gap">
-        <strong>Service not yet modeled:</strong> frequency, travel time and ridership are not estimated.
-      </p>
+      {s.leader.service?.available && s.leader.service.riders && s.leader.service.subsidy ? (
+        <p className="hero-gap">
+          <strong>Preliminary service estimate:</strong> {s.leader.service.round_trips} trains a day each way, about{" "}
+          {people(s.leader.service.riders.p50)} riders a year ({people(s.leader.service.riders.p10)}–
+          {people(s.leader.service.riders.p90)}), operating subsidy {money(s.leader.service.subsidy.p50)} a year. Reliability
+          and capacity are not modeled.
+        </p>
+      ) : (
+        <p className="hero-gap">No service estimate is available for this alternative.</p>
+      )}
       <div className="row">
         <button className="link" onClick={() => onOpenTab("overview")}>
           Full summary
@@ -153,5 +164,38 @@ export function HeroSummary({ plan, weights, defaultWeights, onOpenPriorities, o
         </button>
       </div>
     </section>
+  );
+}
+
+/** Riders and operating subsidy for an alternative, with their ranges (preliminary model estimates). */
+export function ServiceKpis({ r }: { r: RouteResult }) {
+  const sv = r.service;
+  if (!sv || !sv.available || !sv.riders || !sv.subsidy) return null;
+  return (
+    <>
+      <dl className="kpis">
+        <div>
+          <dt>Annual riders (median)</dt>
+          <dd>
+            <span className="kpi">{people(sv.riders.p50)}</span>
+            <span className="kpi-range">
+              {people(sv.riders.p10)}–{people(sv.riders.p90)}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Annual operating subsidy (median)</dt>
+          <dd>
+            <span className="kpi">{money(sv.subsidy.p50)}</span>
+            <span className="kpi-range">
+              {money(sv.subsidy.p10)} to {money(sv.subsidy.p90)}
+            </span>
+          </dd>
+        </div>
+      </dl>
+      <p className="fine">
+        Preliminary estimates for {sv.round_trips} trains a day each way. A negative subsidy is an operating surplus.
+      </p>
+    </>
   );
 }

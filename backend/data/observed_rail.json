@@ -1,0 +1,54 @@
+{
+  "_note": "FY2024 Amtrak service between RailPlanner's cities, used to calibrate the demand model (scripts/calibrate_demand.py). Station ridership is boardings plus alightings from Amtrak's FY2024 state fact sheets. Services list the stops among RailPlanner's 17 cities only, minutes from the first stop, and typical daily round trips. Hub stations (New York, Philadelphia, Chicago) are excluded from the fit because most of their riders use other services.",
+  "checked_on": "2026-10-25",
+  "station_ridership": {
+    "Poughkeepsie": 139276,
+    "Albany": 899048,
+    "Utica": 78717,
+    "Syracuse": 160301,
+    "Rochester": 158640,
+    "Buffalo": 177976,
+    "Erie": 18035,
+    "Cleveland": 58930,
+    "Toledo": 44814,
+    "South Bend": 22769,
+    "Harrisburg": 362208,
+    "Pittsburgh": 136816
+  },
+  "station_notes": {
+    "Buffalo": "Depew (122,682) plus Exchange Street (55,294).",
+    "Albany": "Albany-Rensselaer also serves Boston, Vermont and Montreal trains."
+  },
+  "sources": [
+    {"label": "Amtrak FY2024 State Fact Sheet: New York", "url": "https://www.amtrak.com/content/dam/projects/dotcom/english/public/documents/corporate/statefactsheets/NEWYORK24.pdf"},
+    {"label": "Amtrak FY2024 State Fact Sheet: Pennsylvania", "url": "https://www.amtrak.com/content/dam/projects/dotcom/english/public/documents/corporate/statefactsheets/PENNSYLVANIA24.pdf"},
+    {"label": "Amtrak FY2024 State Fact Sheet: Ohio", "url": "https://www.amtrak.com/content/dam/projects/dotcom/english/public/documents/corporate/statefactsheets/OHIO24.pdf"},
+    {"label": "Amtrak FY2024 State Fact Sheet: Indiana", "url": "https://www.amtrak.com/content/dam/projects/dotcom/english/public/documents/corporate/statefactsheets/INDIANA24.pdf"},
+    {"label": "Amtrak Empire Service timetable", "url": "https://content.amtrak.com/content/timetable/Empire%20Service.pdf"},
+    {"label": "Keystone Service and Pennsylvanian timetable (Rail Passengers Association)", "url": "https://railpassengers.org/site/assets/files/20928/keystone-service-03_16_2026.pdf"},
+    {"label": "Lake Shore Limited timetable (cwrr.com copy of Amtrak timetable)", "url": "https://cwrr.com/Amtrak/e_lake.html"}
+  ],
+  "services": [
+    {"name": "Empire Service, New York-Albany", "round_trips": 9,
+     "stops": [["New York City", 0], ["Poughkeepsie", 85], ["Albany", 151]],
+     "basis": "timetable (7 Empire Service round trips plus the Adirondack and Ethan Allen Express)"},
+    {"name": "Empire Service, New York-Niagara Falls", "round_trips": 2,
+     "stops": [["New York City", 0], ["Poughkeepsie", 88], ["Albany", 175], ["Utica", 276], ["Syracuse", 349], ["Rochester", 434], ["Buffalo", 500]],
+     "basis": "timetable"},
+    {"name": "Maple Leaf", "round_trips": 1,
+     "stops": [["New York City", 0], ["Poughkeepsie", 88], ["Albany", 175], ["Utica", 276], ["Syracuse", 349], ["Rochester", 434], ["Buffalo", 500]],
+     "basis": "assumed to match the Empire Service through trains"},
+    {"name": "Lake Shore Limited", "round_trips": 1,
+     "stops": [["New York City", 0], ["Albany", 154], ["Utica", 298], ["Syracuse", 355], ["Rochester", 434], ["Buffalo", 489], ["Erie", 590], ["Cleveland", 701], ["Toledo", 839], ["South Bend", 995], ["Chicago", 1100]],
+     "basis": "timetable to Toledo; Toledo-Chicago approximate (about 19 hours end to end)"},
+    {"name": "Keystone Service", "round_trips": 12,
+     "stops": [["New York City", 0], ["Philadelphia", 80], ["Harrisburg", 190]],
+     "basis": "timetable (weekday Philadelphia-Harrisburg about 1 h 55 min; New York-Philadelphia approximate)"},
+    {"name": "Pennsylvanian", "round_trips": 1,
+     "stops": [["New York City", 0], ["Philadelphia", 80], ["Harrisburg", 195], ["Pittsburgh", 534]],
+     "basis": "timetable (Harrisburg-Pittsburgh 5 h 39 min)"},
+    {"name": "Capitol Limited", "round_trips": 1,
+     "stops": [["Pittsburgh", 0], ["Cleveland", 180], ["Toledo", 300], ["South Bend", 450], ["Chicago", 555]],
+     "basis": "approximate"}
+  ]
+}

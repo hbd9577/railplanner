@@ -59,3 +59,19 @@ export function list(items: string[]): string {
   if (items.length <= 1) return items[0] ?? "";
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
+
+/** Signed money: a leading minus for negative amounts (for example an operating surplus). */
+export function money(x: number): string {
+  return x < 0 ? `−${usd(-x)}` : usd(x);
+}
+
+/** Minutes shown as hours and minutes, e.g. "2 h 05 min". */
+export function hm(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes - h * 60);
+  return h ? `${h} h ${m.toString().padStart(2, "0")} min` : `${m} min`;
+}
+
+export function count(x: number, digits = 0): string {
+  return x.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
+}

@@ -501,3 +501,10 @@ tr.changed > th, tr.changed > td { background: var(--warn-wash); }
   .data, .ranges-table { display: block; overflow-x: auto; }
   .data th, .data td { padding: 6px 8px; }
 }
+
+/* Service model */
+.warn-text { color: var(--warn); }
+.ok-text { color: var(--ok); }
+.service-controls { align-items: flex-end; }
+.service-controls input { width: 110px; }
+.pairs th[scope="row"] { white-space: nowrap; }

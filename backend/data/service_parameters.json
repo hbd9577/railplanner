@@ -1,0 +1,288 @@
+{
+ "_note": "Inputs to the preliminary service, demand, finance and benefit-cost model (app/service.py). 'basis' is 'verified' (copied from the cited source on the checked date), 'derived' (computed from verified figures as described) or 'assumption' (RailPlanner judgment, with the range used in the simulation). Ranges are sampled in the Monte Carlo; 'value' is the central case.",
+ "checked_on": "2026-10-25",
+ "params": {
+  "round_trips": {
+   "value": 8,
+   "unit": "daily round trips",
+   "basis": "assumption",
+   "editable": true,
+   "note": "Service plan for screening: every train serves every station. Empire Service ran 13 New York-Albany trains a day in FY2024 and 4 west of Albany."
+  },
+  "span_hours": {
+   "value": 17,
+   "unit": "hours of service per day",
+   "basis": "assumption",
+   "editable": false,
+   "note": "First departure about 6 am, last about 11 pm."
+  },
+  "max_mph_existing": {
+   "value": 90,
+   "unit": "mph",
+   "basis": "assumption",
+   "editable": true,
+   "note": "Top speed on upgraded existing corridors. US conventional lines run 79 mph; 90-110 mph needs signal, crossing and track upgrades."
+  },
+  "max_mph_new": {
+   "value": 125,
+   "unit": "mph",
+   "basis": "assumption",
+   "editable": true,
+   "note": "Top speed on new track. 125 mph is the top speed of the Siemens Venture/Airo equipment ordered by Amtrak and states."
+  },
+  "max_mph_mountain": {
+   "value": 79,
+   "unit": "mph",
+   "basis": "assumption",
+   "note": "Speed cap on mountainous sections, where curves and grades limit speed."
+  },
+  "speed_efficiency": {
+   "value": 0.75,
+   "low": 0.68,
+   "high": 0.82,
+   "unit": "share of top speed",
+   "basis": "assumption",
+   "note": "Average running speed between stops as a share of top speed (curves, slow orders, junctions). FY2024 Empire Service averaged about 54 mph Albany-Buffalo on 79 mph track including intermediate stops."
+  },
+  "stop_penalty_min": {
+   "value": 5,
+   "low": 4,
+   "high": 7,
+   "unit": "minutes per intermediate stop",
+   "basis": "assumption",
+   "note": "Dwell plus braking and acceleration."
+  },
+  "terminal_penalty_min": {
+   "value": 12,
+   "unit": "minutes per large-terminal approach",
+   "basis": "assumption",
+   "note": "Slow approaches into New York, Philadelphia and Chicago terminals."
+  },
+  "access_egress_min": {
+   "value": 50,
+   "low": 40,
+   "high": 70,
+   "unit": "minutes",
+   "basis": "assumption",
+   "note": "Getting to the origin station, boarding buffer and getting from the destination station, combined."
+  },
+  "car_circuity": {
+   "value": 1.15,
+   "low": 1.1,
+   "high": 1.25,
+   "unit": "road miles per straight-line mile",
+   "basis": "assumption"
+  },
+  "car_mph": {
+   "value": 60,
+   "low": 55,
+   "high": 65,
+   "unit": "mph average door to door, excluding stops",
+   "basis": "assumption"
+  },
+  "car_fixed_min": {
+   "value": 15,
+   "unit": "minutes (parking, local streets)",
+   "basis": "assumption"
+  },
+  "air_fixed_min": {
+   "value": 180,
+   "unit": "minutes (airport access, security, boarding, egress)",
+   "basis": "assumption",
+   "note": "Air is only compared for city pairs at least 300 straight-line miles apart."
+  },
+  "air_block_mph": {
+   "value": 350,
+   "unit": "mph gate to gate",
+   "basis": "assumption"
+  },
+  "pop_exponent": {
+   "value": 0.8,
+   "unit": "",
+   "basis": "assumption",
+   "note": "Demand grows less than proportionally with the product of station catchment populations."
+  },
+  "freq_elasticity": {
+   "value": 0.5,
+   "low": 0.3,
+   "high": 0.7,
+   "unit": "",
+   "basis": "assumption",
+   "note": "Demand response to more frequent service. Within the range reported in UK meta-analyses of rail headway elasticities (Wardman 2012, 2022)."
+  },
+  "time_ratio_exponent": {
+   "value": null,
+   "unit": "",
+   "basis": "derived",
+   "note": "Sensitivity of demand to rail door-to-door time relative to driving; fitted to FY2024 Amtrak station ridership (data/demand_calibration.json)."
+  },
+  "demand_scale": {
+   "value": null,
+   "unit": "",
+   "basis": "derived",
+   "note": "Scale constant fitted to FY2024 Amtrak station ridership; its fit error sets the demand uncertainty band."
+  },
+  "fare_per_pmi": {
+   "value": 0.3,
+   "low": 0.21,
+   "high": 0.38,
+   "unit": "US$ per passenger-mile",
+   "basis": "derived",
+   "source": "Amtrak Monthly Performance Report, September 2024 (FY2024 final): gross ticket revenue / passenger-miles. Empire Service $84.6M/225.5M = $0.375; Maple Leaf $20.6M/100.0M = $0.206; Keystone $27.5M/79.1M = $0.348; Pennsylvanian $11.5M/47.0M = $0.245; Lake Shore Limited $46.7M/162.7M = $0.287; all State Supported $509.0M/1,847.1M = $0.276.",
+   "url": "https://www.amtrak.com/content/dam/projects/dotcom/english/public/documents/corporate/monthlyperformancereports/2024/Amtrak-Monthly-Performance-Report-September-2024.pdf"
+  },
+  "cost_per_train_mile": {
+   "value": 75,
+   "low": 56,
+   "high": 98,
+   "unit": "US$ per train-mile (fully allocated operating cost)",
+   "basis": "derived",
+   "source": "Amtrak Monthly Performance Report, September 2024: operating expense / train-miles. All State Supported $1,110.7M/14.9M = $74.5; Empire Service $94.8M/1.2M = $79; Maple Leaf $44.5M/0.8M = $56; Keystone $78.6M/0.8M = $98; Pennsylvanian $23.4M/0.3M = $78; Lake Shore Limited $93.9M/1.0M = $94 (train-miles printed to 0.1M).",
+   "url": "https://www.amtrak.com/content/dam/projects/dotcom/english/public/documents/corporate/monthlyperformancereports/2024/Amtrak-Monthly-Performance-Report-September-2024.pdf"
+  },
+  "seats_per_train": {
+   "value": 300,
+   "unit": "seats",
+   "basis": "assumption",
+   "note": "A six- or seven-car trainset. Used only to report average load factor."
+  },
+  "trainset_cost": {
+   "value": 60000000,
+   "low": 41000000,
+   "high": 88000000,
+   "unit": "US$ per trainset",
+   "basis": "derived",
+   "source": "Amtrak's July 2021 order with Siemens Mobility: $3.4B in Siemens contracts for up to 83 trainsets (about $41M each), within a $7.3B program that also covers a long-term parts and service agreement, facility modifications and other program expenses (about $88M each).",
+   "url": "https://media.amtrak.com/2021/07/amtrak-to-transform-rail-travel-with-7-3-billion-investment-in-state-of-the-art-equipment/"
+  },
+  "spare_ratio": {
+   "value": 0.15,
+   "unit": "spare trainsets per trainset in service (at least one)",
+   "basis": "assumption"
+  },
+  "turnaround_min": {
+   "value": 40,
+   "unit": "minutes at each terminal",
+   "basis": "assumption"
+  },
+  "renewal_share": {
+   "value": 0.01,
+   "low": 0.005,
+   "high": 0.015,
+   "unit": "share of capital cost per year",
+   "basis": "assumption",
+   "note": "Infrastructure renewal and state-of-good-repair spending after opening."
+  },
+  "ramp_up": {
+   "value": [
+    0.6,
+    0.8,
+    1.0
+   ],
+   "unit": "share of mature ridership in years 1, 2, 3+",
+   "basis": "assumption"
+  },
+  "vtts_intercity_personal": {
+   "value": 28.2,
+   "unit": "US$ (2024) per person-hour",
+   "basis": "verified",
+   "source": "USDOT Benefit-Cost Analysis Guidance for Discretionary Grant Programs, 2026 update, Appendix A: intercity personal travel.",
+   "url": "https://www.transportation.gov/sites/dot.gov/files/2025-12/Benefit%20Cost%20Analysis%20Guidance%202026%20Update%20%28Final%29.pdf"
+  },
+  "voc_per_mile": {
+   "value": 0.56,
+   "unit": "US$ (2024) per vehicle-mile, light-duty",
+   "basis": "verified",
+   "source": "USDOT BCA Guidance 2026 update, Appendix A.",
+   "url": "https://www.transportation.gov/sites/dot.gov/files/2025-12/Benefit%20Cost%20Analysis%20Guidance%202026%20Update%20%28Final%29.pdf"
+  },
+  "car_occupancy": {
+   "value": 1.52,
+   "unit": "persons per vehicle (all travel)",
+   "basis": "verified",
+   "source": "USDOT BCA Guidance 2026 update, Appendix A.",
+   "url": "https://www.transportation.gov/sites/dot.gov/files/2025-12/Benefit%20Cost%20Analysis%20Guidance%202026%20Update%20%28Final%29.pdf"
+  },
+  "fatal_crash_value": {
+   "value": 15366900,
+   "unit": "US$ (2024) per fatal crash",
+   "basis": "verified",
+   "source": "USDOT BCA Guidance 2026 update, Appendix A.",
+   "url": "https://www.transportation.gov/sites/dot.gov/files/2025-12/Benefit%20Cost%20Analysis%20Guidance%202026%20Update%20%28Final%29.pdf"
+  },
+  "discount_rate": {
+   "value": 0.07,
+   "unit": "real, per year",
+   "basis": "verified",
+   "source": "USDOT BCA Guidance 2026 update (7%). The 2024 guidance used 3.1%, which is shown as a sensitivity.",
+   "url": "https://www.transportation.gov/sites/dot.gov/files/2025-12/Benefit%20Cost%20Analysis%20Guidance%202026%20Update%20%28Final%29.pdf"
+  },
+  "discount_rate_alt": {
+   "value": 0.031,
+   "unit": "real, per year",
+   "basis": "verified",
+   "source": "USDOT BCA Guidance 2024 update (3.1%), as summarized by Caltrans' Cal-B/C federal comparison.",
+   "url": "https://dot.ca.gov/-/media/dot-media/programs/transportation-planning/documents/division-transportation-planning/transportation-economics/cal-bc-federal-comparison-of-value-matrix-2025-a11y.pdf"
+  },
+  "analysis_years": {
+   "value": 30,
+   "unit": "years of operation",
+   "basis": "verified",
+   "source": "USDOT BCA Guidance 2026 update: 30 years for initial construction projects."
+  },
+  "fatality_rate": {
+   "value": 1.26e-08,
+   "unit": "deaths per vehicle-mile (1.26 per 100 million)",
+   "basis": "verified",
+   "source": "NHTSA, Overview of Motor Vehicle Traffic Crashes in 2023.",
+   "url": "https://crashstats.nhtsa.dot.gov/Api/Public/Publication/813705"
+  },
+  "car_co2_g_per_mile": {
+   "value": 400,
+   "unit": "g CO2 per vehicle-mile",
+   "basis": "verified",
+   "source": "US EPA, Greenhouse Gas Emissions from a Typical Passenger Vehicle.",
+   "url": "https://www.epa.gov/greenvehicles/greenhouse-gas-emissions-typical-passenger-vehicle"
+  },
+  "diesel_co2_g_per_gal": {
+   "value": 10180,
+   "unit": "g CO2 per gallon of diesel",
+   "basis": "verified",
+   "source": "US EPA, Greenhouse Gas Emissions from a Typical Passenger Vehicle.",
+   "url": "https://www.epa.gov/greenvehicles/greenhouse-gas-emissions-typical-passenger-vehicle"
+  },
+  "rail_btu_per_car_mile": {
+   "value": 34987,
+   "unit": "Btu per railcar-mile (Amtrak, 2019)",
+   "basis": "verified",
+   "source": "ORNL Transportation Energy Data Book, Edition 40, Table 2.13 (Intercity Amtrak).",
+   "url": "https://tedb.ornl.gov/wp-content/uploads/2022/03/TEDB_Ed_40.pdf"
+  },
+  "cars_per_train": {
+   "value": 6,
+   "unit": "railcars per trainset",
+   "basis": "assumption"
+  },
+  "diesel_btu_per_gal": {
+   "value": 137381,
+   "unit": "Btu per gallon of diesel",
+   "basis": "verified",
+   "source": "US EIA, Energy units and calculators explained (1 gallon of diesel = 137,381 Btu).",
+   "url": "https://www.eia.gov/energyexplained/units-and-calculators/"
+  },
+  "car_diversion_share": {
+   "value": 0.7,
+   "low": 0.5,
+   "high": 0.85,
+   "unit": "share of rail trips that would otherwise be made by car",
+   "basis": "assumption",
+   "note": "The rest would otherwise fly, take the bus or not travel."
+  },
+  "max_load_factor": {
+   "value": 0.75,
+   "unit": "average share of seats filled",
+   "basis": "assumption",
+   "note": "Ridership is capped at this average load; beyond it the service plan needs more or longer trains."
+  }
+ }
+}

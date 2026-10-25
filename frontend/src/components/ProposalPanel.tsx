@@ -24,7 +24,7 @@ function errorText(e: unknown, fallback: string): string {
   return e instanceof Error ? `${fallback}: ${e.message}` : fallback;
 }
 
-const scenarioKey = (s: ScenarioPayload) => JSON.stringify([s.priorities, s.ranking]);
+const scenarioKey = (s: ScenarioPayload) => JSON.stringify([s.priorities, s.ranking, s.service]);
 
 export default function ProposalPanel({ requestId, scenario, suggestions, fileStem }: Props) {
   const [proposal, setProposal] = useState<ProposalResult | null>(null);

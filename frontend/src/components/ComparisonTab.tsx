@@ -5,7 +5,7 @@ import { METRICS, NOT_MODELED, type Group } from "../metrics";
 import { gainGiveUp } from "../summary";
 import { AltName, Direction, MetricInfo, StatusChip } from "./ui";
 
-const GROUPS: Group[] = ["Service", "Demand", "Access", "Infrastructure", "Cost", "Schedule", "Impacts", "Funding"];
+const GROUPS: Group[] = ["Service", "Demand", "Access", "Operations", "Cost", "Benefits", "Schedule", "Infrastructure", "Impacts", "Funding"];
 
 interface Props {
   routes: RouteResult[];
