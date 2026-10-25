@@ -29,8 +29,10 @@ app.include_router(router)
 @app.get("/health", response_model=HealthResponse)
 def health() -> HealthResponse:
     """Liveness plus a DB probe. Stays 200 when the DB is down so the demo cache can still serve."""
+    s = get_settings()
+    features = {"gemini": bool(s.gemini_api_key), "voice": bool(s.elevenlabs_api_key)}
     try:
         info = db.db_info()
-        return HealthResponse(status="ok", db="ok", db_info=info)
+        return HealthResponse(status="ok", db="ok", db_info=info, features=features)
     except Exception as e:  # noqa: BLE001 - surface any connection error as status text
-        return HealthResponse(status="degraded", db=f"error: {type(e).__name__}: {e}"[:300])
+        return HealthResponse(status="degraded", db=f"error: {type(e).__name__}: {e}"[:300], features=features)

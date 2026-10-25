@@ -16,9 +16,11 @@ services:
   proxy:
     image: caddy:2.8
     restart: unless-stopped
+    # Only HTTP by default. With a bare IP there is no certificate, and an open 443 that fails TLS
+    # makes Chrome's automatic HTTPS upgrade show an error page instead of falling back to HTTP.
+    # With a domain in SITE_ADDRESS: docker compose -f docker-compose.yml -f docker-compose.https.yml up -d
     ports:
       - "80:80"
-      - "443:443"
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
     volumes:

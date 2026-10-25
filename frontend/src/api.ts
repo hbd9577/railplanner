@@ -147,6 +147,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   cities: () => request<City[]>("/cities"),
+  features: () =>
+    request<{ features?: Record<string, boolean> }>("/health").then((h) => h.features ?? {}),
   demoPairs: () => request<DemoPair[]>("/demo-pairs"),
   plan: (origin_id: number, dest_id: number, fresh = false) =>
     request<PlanResult>(`/plan${fresh ? "?fresh=true" : ""}`, {

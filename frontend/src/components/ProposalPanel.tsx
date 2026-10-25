@@ -16,12 +16,19 @@ function errorText(e: unknown, fallback: string): string {
 export default function ProposalPanel({ requestId }: Props) {
   const [proposal, setProposal] = useState<ProposalResult | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [voiceOk, setVoiceOk] = useState(true);
+  const [voiceOk, setVoiceOk] = useState(false); // shown only when the API reports voice is configured
   const [voiceState, setVoiceState] = useState<"idle" | "loading" | "playing">("idle");
   const [question, setQuestion] = useState("");
   const [answers, setAnswers] = useState<{ q: string; a: string; check?: NumberCheck }[]>([]);
   const [askState, setAskState] = useState<Status>({ kind: "idle" });
   const audio = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    api
+      .features()
+      .then((f) => setVoiceOk(!!f.voice))
+      .catch(() => setVoiceOk(false));
+  }, []);
 
   useEffect(() => {
     setProposal(null);

@@ -16,5 +16,9 @@ git archive --format=tar HEAD | ssh "$HOST" '
   rsync -a --delete --exclude .env /opt/railplanner/src.new/ /opt/railplanner/app/
   rm -rf /opt/railplanner/src.new'
 
-ssh "$HOST" 'cd /opt/railplanner/app && docker compose up -d --build && docker image prune -f >/dev/null && docker compose ps'
+ssh "$HOST" 'cd /opt/railplanner/app
+  files="-f docker-compose.yml"
+  # a domain in SITE_ADDRESS (anything but :80) turns on the HTTPS override
+  grep -qE "^SITE_ADDRESS=[^:]" .env && files="$files -f docker-compose.https.yml"
+  docker compose $files up -d --build --remove-orphans && docker image prune -f >/dev/null && docker compose $files ps'
 echo "health: $(curl -s "http://${HOST#*@}/api/health")"

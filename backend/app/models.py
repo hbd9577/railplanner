@@ -12,6 +12,7 @@ class HealthResponse(BaseModel):
     status: str
     db: str
     db_info: dict | None = None
+    features: dict[str, bool] = {}  # which optional integrations are configured (gemini, voice)
 
 
 class City(BaseModel):
