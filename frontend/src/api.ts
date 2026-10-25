@@ -132,6 +132,41 @@ export interface AskResult {
   number_check?: NumberCheck;
 }
 
+export interface ProgramGuide {
+  applicants: string;
+  stage: string;
+  match: string;
+  limits: string;
+  status: string;
+  next_step: string;
+  fit_rule: string;
+  source_url: string;
+  source_label: string;
+  verified_on: string;
+  verification: "verified" | "partial" | "unverified";
+  unverified_fields: string[];
+}
+
+export interface FundingProgram {
+  id: string;
+  name: string;
+  agency: string;
+  kind: "grant" | "loan" | "planning";
+  federal_match_pct: number;
+  typical_award_usd: [number, number];
+  guide?: ProgramGuide;
+}
+
+/** The active scenario as sent to the proposal and Q&A endpoints. */
+export interface ScenarioPayload {
+  priorities: { label: string; share_pct: number }[];
+  ranking: string[];
+  close_call: boolean;
+  excluded_priorities: string[];
+  selected: string | null;
+  is_default: boolean;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -160,15 +195,22 @@ export const api = {
   features: () =>
     request<{ features?: Record<string, boolean> }>("/health").then((h) => h.features ?? {}),
   demoPairs: () => request<DemoPair[]>("/demo-pairs"),
+  fundingPrograms: () => request<FundingProgram[]>("/funding-programs"),
   plan: (origin_id: number, dest_id: number, fresh = false) =>
     request<PlanResult>(`/plan${fresh ? "?fresh=true" : ""}`, {
       method: "POST",
       body: JSON.stringify({ origin_id, dest_id }),
     }),
-  proposal: (requestId: number, refresh = false) =>
-    request<ProposalResult>(`/proposal/${requestId}${refresh ? "?refresh=true" : ""}`, { method: "POST" }),
-  ask: (requestId: number, question: string) =>
-    request<AskResult>(`/ask/${requestId}`, { method: "POST", body: JSON.stringify({ question }) }),
+  proposal: (requestId: number, refresh = false, scenario?: ScenarioPayload) =>
+    request<ProposalResult>(`/proposal/${requestId}${refresh ? "?refresh=true" : ""}`, {
+      method: "POST",
+      body: JSON.stringify({ scenario: scenario ?? null }),
+    }),
+  ask: (requestId: number, question: string, scenario?: ScenarioPayload, detail = false) =>
+    request<AskResult>(`/ask/${requestId}`, {
+      method: "POST",
+      body: JSON.stringify({ question, scenario: scenario ?? null, detail }),
+    }),
   voice: async (text: string): Promise<Blob> => {
     const res = await fetch("/api/voice", {
       method: "POST",

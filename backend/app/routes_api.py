@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from . import planner, proposal
+from . import funding, planner, proposal
 from .config import DATA_DIR, get_settings
 from .db import DBUnavailable
 from .models import City, PlanResult
@@ -35,6 +35,12 @@ class DemoPair(BaseModel):
 
 class AskRequest(BaseModel):
     question: str
+    scenario: proposal.Scenario | None = None
+    detail: bool = False
+
+
+class ProposalRequest(BaseModel):
+    scenario: proposal.Scenario | None = None
 
 
 class VoiceRequest(BaseModel):
@@ -99,15 +105,18 @@ def get_plan(request_id: int) -> PlanResult:
 
 
 @router.post("/proposal/{request_id}")
-def create_proposal(request_id: int, refresh: bool = False) -> dict:
-    """Gemini-drafted proposal; cached per plan. Falls back to a template draft if Gemini is down."""
+def create_proposal(request_id: int, refresh: bool = False, body: ProposalRequest | None = None) -> dict:
+    """Gemini-drafted proposal for the active scenario. Drafts for the default priorities are cached per
+    plan; custom priorities are drafted fresh. Falls back to a template draft if Gemini is down."""
     plan = _plan_or_404(request_id)
-    if not refresh:
+    scenario = body.scenario if body else None
+    cacheable = scenario is None or scenario.is_default
+    if cacheable and not refresh:
         cached = planner.load_proposal(plan)
         if cached is not None:
             return {**cached, "source": "cache"}
-    result = proposal.generate_proposal(plan)
-    if result["source"] == "gemini":
+    result = proposal.generate_proposal(plan, scenario, planner.MODEL_VERSION)
+    if result["source"] == "gemini" and cacheable:
         planner.save_proposal(plan, result)
     return result
 
@@ -121,10 +130,17 @@ def ask(request_id: int, body: AskRequest) -> dict:
         raise HTTPException(400, "question is too long (500 characters max)")
     plan = _plan_or_404(request_id)
     try:
-        return proposal.ask(question, plan)
+        return proposal.ask(question, plan, body.scenario, body.detail)
     except proposal.GeminiUnavailable as e:
         log.warning("ask unavailable: %s", e)
         raise HTTPException(503, "Q&A is temporarily unavailable (the language model is busy). Try again shortly.")
+
+
+@router.get("/funding-programs")
+def funding_programs():
+    """Program reference data for the funding guide: verified facts, sources and verification dates."""
+    keep = ("id", "name", "agency", "kind", "federal_match_pct", "typical_award_usd", "guide")
+    return [{k: p.get(k) for k in keep} for p in funding.load_programs()]
 
 
 LAYERS = {"rail", "protected"}

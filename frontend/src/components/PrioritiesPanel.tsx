@@ -1,7 +1,7 @@
 import type { RouteResult } from "../api";
 import { METRIC } from "../metrics";
-import { DEFAULT_WEIGHTS, PRIORITIES, UNAVAILABLE_PRIORITIES, explainChange, rank, weightsEqual, type Weights } from "../scoring";
-import { AltName } from "./ui";
+import { DEFAULT_WEIGHTS, PRIORITIES, UNAVAILABLE_PRIORITIES, explainChange, missingPriorities, rank, sensitivity, weightsEqual, type Weights } from "../scoring";
+import { AltName, StatusChip } from "./ui";
 
 interface Props {
   routes: RouteResult[];
@@ -17,11 +17,14 @@ export default function PrioritiesPanel({ routes, weights, onChange, onClose }: 
   const total = PRIORITIES.reduce((a, p) => a + (weights[p.id] ?? 0), 0);
   const change = explainChange(routes, DEFAULT_WEIGHTS, weights);
   const isDefault = weightsEqual(weights, DEFAULT_WEIGHTS);
+  const missing = missingPriorities(routes);
 
   return (
     <section className="priorities" id="priorities" aria-labelledby="prio-h">
       <header className="prio-head">
-        <h2 id="prio-h">Priorities</h2>
+        <h2 id="prio-h">
+          Priorities <StatusChip status="assumption" />
+        </h2>
         <div className="row">
           <button onClick={() => onChange({ ...DEFAULT_WEIGHTS })} disabled={isDefault}>
             Reset to defaults
@@ -99,10 +102,48 @@ export default function PrioritiesPanel({ routes, weights, onChange, onClose }: 
             </tbody>
           </table>
           {total === 0 && <p className="notice">All weights are zero, so every alternative ties.</p>}
+          {missing.length > 0 && (
+            <p className="notice">
+              Left out of the ranking because a value is missing for at least one alternative:{" "}
+              {missing.map((p) => p.label.toLowerCase()).join(", ")}.
+            </p>
+          )}
           {change && <p className="change-note">{change}</p>}
           {ranked.length > 1 && ranked[0].score - ranked[1].score < 3 && (
             <p className="change-note">The top two are within 3 points: treat this as a tie.</p>
           )}
+          <h3 className="sens-h">How sensitive is the leader?</h3>
+          <p className="fine">
+            Moving one slider at a time (others unchanged), {routes[ranked[0].index].label} stays first while the slider is
+            within the range shown.
+          </p>
+          <table className="data sens">
+            <thead>
+              <tr>
+                <th scope="col">Priority</th>
+                <th scope="col" className="num">Now</th>
+                <th scope="col" className="num">Leader holds from–to</th>
+                <th scope="col">Outside that range</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sensitivity(routes, weights).map((x) => {
+                const robust = x.holds[0] === 0 && x.holds[1] === 100;
+                const flips = [
+                  x.below != null && `below ${x.holds[0]}: ${routes[x.below].label}`,
+                  x.above != null && `above ${x.holds[1]}: ${routes[x.above].label}`,
+                ].filter(Boolean);
+                return (
+                  <tr key={x.priority.id}>
+                    <th scope="row">{x.priority.label}</th>
+                    <td className="num">{x.current}</td>
+                    <td className="num">{robust ? "any value" : `${x.holds[0]}–${x.holds[1]}`}</td>
+                    <td>{robust ? "No change" : flips.join("; ")}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
           <p className="fine">
             How the score works: for each priority, the best alternative on that measure gets full points and the
             others get points in proportion (best ÷ value for lower-is-better, value ÷ best for higher-is-better). Points

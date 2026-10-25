@@ -55,8 +55,18 @@ export interface Ranked {
   contributions: Record<string, number>; // points contributed by each priority
 }
 
+/** Priorities that cannot be scored because a value is missing for some alternative. */
+export function missingPriorities(routes: RouteResult[]): Priority[] {
+  return PRIORITIES.filter((p) => routes.some((r) => !Number.isFinite(METRIC[p.metric].get(r))));
+}
+
+/**
+ * Weighted ranking. A priority with a missing value for any alternative is left out entirely (and
+ * reported by missingPriorities), so missing data can never make an alternative look better.
+ */
 export function rank(routes: RouteResult[], weights: Weights): Ranked[] {
-  const active = PRIORITIES.filter((p) => (weights[p.id] ?? 0) > 0);
+  const missing = new Set(missingPriorities(routes).map((p) => p.id));
+  const active = PRIORITIES.filter((p) => (weights[p.id] ?? 0) > 0 && !missing.has(p.id));
   const total = active.reduce((a, p) => a + weights[p.id], 0) || 1;
   const norms = Object.fromEntries(active.map((p) => [p.id, normalized(routes, METRIC[p.metric])]));
   return routes
@@ -83,15 +93,63 @@ export function decodeWeights(s: string | null): Weights | null {
   return Object.fromEntries(PRIORITIES.map((p, i) => [p.id, parts[i]]));
 }
 
-/** Why did the leader change between two weightings? Names the priorities that moved most. */
+/**
+ * Why did the leader change between two weightings? Each priority's effect is its change in share of
+ * the total weight times how much better the new leader scores on it than the old one; the
+ * priorities that moved the most points toward the new leader are named.
+ */
 export function explainChange(routes: RouteResult[], before: Weights, after: Weights): string | null {
-  const a = rank(routes, before)[0];
-  const b = rank(routes, after)[0];
-  if (a.index === b.index) return null;
-  const moved = PRIORITIES.map((p) => ({ p, d: (after[p.id] ?? 0) - (before[p.id] ?? 0) }))
-    .filter((x) => x.d !== 0)
-    .sort((x, y) => Math.abs(y.d) - Math.abs(x.d))
+  const a = rank(routes, before)[0].index;
+  const b = rank(routes, after)[0].index;
+  if (a === b) return null;
+  const missing = new Set(missingPriorities(routes).map((p) => p.id));
+  const shareOf = (w: Weights) => {
+    const t = PRIORITIES.filter((p) => !missing.has(p.id)).reduce((s, p) => s + (w[p.id] ?? 0), 0) || 1;
+    return (id: string) => (missing.has(id) ? 0 : (w[id] ?? 0) / t);
+  };
+  const sb = shareOf(before);
+  const sa = shareOf(after);
+  const effects = PRIORITIES.filter((p) => !missing.has(p.id))
+    .map((p) => {
+      const n = normalized(routes, METRIC[p.metric]);
+      const d = sa(p.id) - sb(p.id);
+      return { p, d, effect: d * (n[b] - n[a]) };
+    })
+    .filter((x) => x.effect > 1e-6)
+    .sort((x, y) => y.effect - x.effect)
     .slice(0, 2)
-    .map((x) => `${x.d > 0 ? "more" : "less"} weight on ${x.p.label.toLowerCase()}`);
-  return `${routes[b.index].label} now leads instead of ${routes[a.index].label}, mainly because of ${moved.join(" and ")}.`;
+    .map((x) => `${x.d > 0 ? "more" : "less"} weight on “${x.p.label}”`);
+  const why = effects.length ? `, mainly because of ${effects.join(" and ")}` : "";
+  return `${routes[b].label} now leads instead of ${routes[a].label}${why}.`;
+}
+
+export interface Sensitivity {
+  priority: Priority;
+  current: number;
+  /** Weight range (0-100, others unchanged) over which the current leader stays first. */
+  holds: [number, number];
+  /** Who leads just outside that range, if anyone else does. */
+  below: number | null;
+  above: number | null;
+}
+
+/** One-at-a-time sensitivity: how far each weight can move before the leader changes. */
+export function sensitivity(routes: RouteResult[], weights: Weights): Sensitivity[] {
+  const leader = rank(routes, weights)[0].index;
+  const missing = new Set(missingPriorities(routes).map((p) => p.id));
+  return PRIORITIES.filter((p) => !missing.has(p.id)).map((p) => {
+    const current = weights[p.id] ?? 0;
+    const leadAt = (w: number) => rank(routes, { ...weights, [p.id]: w })[0].index;
+    let lo = current;
+    while (lo > 0 && leadAt(lo - 1) === leader) lo--;
+    let hi = current;
+    while (hi < 100 && leadAt(hi + 1) === leader) hi++;
+    return {
+      priority: p,
+      current,
+      holds: [lo, hi],
+      below: lo > 0 ? leadAt(lo - 1) : null,
+      above: hi < 100 ? leadAt(hi + 1) : null,
+    };
+  });
 }

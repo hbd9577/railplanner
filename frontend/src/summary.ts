@@ -13,8 +13,10 @@ function better(m: Metric, a: number, b: number): boolean {
   return a > b * (1 + MEANINGFUL);
 }
 
+/** Index of the best alternative on a measure, or -1 if any value is missing. */
 function bestIndex(routes: RouteResult[], m: Metric, higher: boolean): number {
   const vals = routes.map(m.get);
+  if (!vals.every(Number.isFinite)) return -1;
   const target = higher ? Math.max(...vals) : Math.min(...vals);
   return vals.indexOf(target);
 }
@@ -53,7 +55,7 @@ export function tradeoffs(routes: RouteResult[], i: number): string[] {
   for (const [id, phrase, fmt] of checks) {
     const m = METRIC[id];
     const j = bestIndex(routes, m, id === "stations" || m.direction === "higher");
-    if (j !== i && better({ ...m, direction: id === "stations" ? "higher" : m.direction }, m.get(routes[j]), m.get(r))) {
+    if (j >= 0 && j !== i && better({ ...m, direction: id === "stations" ? "higher" : m.direction }, m.get(routes[j]), m.get(r))) {
       out.push(`${routes[j].label} ${phrase} (${fmt(m.get(routes[j]))} vs ${fmt(m.get(r))})`);
     }
   }
@@ -123,14 +125,14 @@ export function suggestedQuestions(plan: PlanResult, selected: number): string[]
   const qs: string[] = [];
   const cheap = bestIndex(r, METRIC.cost, false);
   const dear = bestIndex(r, METRIC.cost, true);
-  if (cheap !== dear && better(METRIC.cost, METRIC.cost.get(r[cheap]), METRIC.cost.get(r[dear])))
+  if (cheap >= 0 && cheap !== dear && better(METRIC.cost, METRIC.cost.get(r[cheap]), METRIC.cost.get(r[dear])))
     qs.push(`Why does ${r[cheap].label} cost less than ${r[dear].label}?`);
   const fast = bestIndex(r, METRIC.duration, false);
   const slow = bestIndex(r, METRIC.duration, true);
-  if (fast !== slow && better(METRIC.duration, METRIC.duration.get(r[fast]), METRIC.duration.get(r[slow])))
+  if (fast >= 0 && fast !== slow && better(METRIC.duration, METRIC.duration.get(r[fast]), METRIC.duration.get(r[slow])))
     qs.push(`Why does ${r[slow].label} take longer to open than ${r[fast].label}?`);
   const short = bestIndex(r, METRIC.length, false);
-  if (short !== cheap) qs.push(`${r[short].label} is the shortest. Why doesn't it cost the least?`);
+  if (short >= 0 && cheap >= 0 && short !== cheap) qs.push(`${r[short].label} is the shortest. Why doesn't it cost the least?`);
   qs.push(`What drives the uncertainty in the cost of ${r[selected].label}?`);
   qs.push(`Which funding programs fit ${r[selected].label}, and what would remain for state and local sponsors?`);
   return qs.slice(0, 4);

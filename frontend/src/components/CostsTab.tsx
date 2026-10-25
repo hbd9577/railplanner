@@ -129,8 +129,9 @@ export default function CostsTab({ plan, selected, onSelect }: Props) {
             <li>Funding gaps, litigation, and host-railroad negotiations.</li>
           </ul>
           <p className="fine">
-            Construction time is tied to each run's simulated cost, so cost and schedule move together. Other inputs
-            are drawn independently, which may understate how often several things go wrong at once.
+            Design and construction time scale with each run's simulated cost, so cost and schedule move together.
+            Planning, land acquisition and procurement times are drawn independently of cost, which may understate
+            how often several things go wrong at once.
           </p>
         </section>
       </div>

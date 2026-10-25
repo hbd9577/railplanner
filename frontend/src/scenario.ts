@@ -1,9 +1,9 @@
 // Scenario state that survives a reload or a shared link: corridor, selected alternative, tab and
 // priority weights. Saved scenarios live in this browser only (localStorage).
-import type { PlanResult } from "./api";
+import type { PlanResult, ScenarioPayload } from "./api";
 import { usd, years, people, miles, pct } from "./format";
 import { METRICS, NOT_MODELED, STATUS_LABEL } from "./metrics";
-import { PRIORITIES, decodeWeights, encodeWeights, rank, type Weights } from "./scoring";
+import { DEFAULT_WEIGHTS, PRIORITIES, decodeWeights, encodeWeights, missingPriorities, rank, weightsEqual, type Weights } from "./scoring";
 import { decisionSummary } from "./summary";
 
 export interface Scenario {
@@ -104,8 +104,8 @@ td{text-align:right}small{color:#6b7280;font-weight:400}.note{color:#4b5563;font
 </body></html>`;
 }
 
-export function download(filename: string, html: string): void {
-  const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+export function download(filename: string, content: string, type = "text/html"): void {
+  const url = URL.createObjectURL(new Blob([content], { type: `${type};charset=utf-8` }));
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
@@ -113,4 +113,71 @@ export function download(filename: string, html: string): void {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** What the proposal and Q&A endpoints need to reflect the active scenario. */
+export function scenarioPayload(plan: PlanResult, weights: Weights, selected: number): ScenarioPayload {
+  const ranked = rank(plan.routes, weights);
+  const total = PRIORITIES.reduce((a, p) => a + (weights[p.id] ?? 0), 0) || 1;
+  return {
+    priorities: PRIORITIES.map((p) => ({ label: p.label, share_pct: Math.round((100 * (weights[p.id] ?? 0)) / total) })),
+    ranking: ranked.map((x) => plan.routes[x.index].label),
+    close_call: ranked.length > 1 && ranked[0].score - ranked[1].score < 3,
+    excluded_priorities: missingPriorities(plan.routes).map((p) => p.label),
+    selected: plan.routes[selected]?.label ?? null,
+    is_default: weightsEqual(weights, DEFAULT_WEIGHTS),
+  };
+}
+
+/** Opens a print-ready copy of a full HTML document; the browser's print dialog can save it as PDF. */
+export function printDocument(html: string): boolean {
+  const w = window.open("", "_blank");
+  if (!w) return false;
+  w.document.open();
+  w.document.write(html.replace("</body>", "<script>window.onload=()=>{window.focus();window.print();}</script></body>"));
+  w.document.close();
+  return true;
+}
+
+export function printHtml(title: string, bodyHtml: string): boolean {
+  return printDocument(`<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>body{font:15px/1.55 system-ui,sans-serif;color:#111827;max-width:800px;margin:24px auto;padding:0 16px}
+h1{font-size:24px}h2{font-size:18px;margin-top:22px}blockquote{border-left:3px solid #92400e;margin:8px 0;padding:4px 12px;background:#fef6e7}
+a{color:#0f5f6b}</style></head><body>${bodyHtml}</body></html>`);
+}
+
+const csvCell = (v: string | number) => {
+  const t = String(v);
+  return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+};
+
+/** One row per measure and alternative, with status, units and the priorities used. */
+export function resultsCsv(plan: PlanResult, weights: Weights): string {
+  const rows: (string | number)[][] = [["section", "measure", "alternative", "value", "formatted", "units", "status", "source"]];
+  for (const m of METRICS) {
+    for (const r of plan.routes) {
+      const v = m.get(r);
+      rows.push(["measure", m.label, r.label, Number.isFinite(v) ? +v.toFixed(4) : "", m.fmt(v), m.unit, STATUS_LABEL[m.status], m.source]);
+    }
+  }
+  for (const r of plan.routes) {
+    for (const [name, d, unit] of [["capital cost", r.simulation.cost, "US$"], ["time to opening", r.simulation.duration, "months"]] as const) {
+      for (const p of ["p10", "p50", "p90"] as const) {
+        rows.push(["distribution", `${name} ${p.toUpperCase()}`, r.label, Math.round(d[p]), name === "capital cost" ? usd(d[p]) : years(d[p]), unit, STATUS_LABEL.estimate, "RailPlanner Monte Carlo"]);
+      }
+    }
+    r.stats.station_miles.forEach((st, k) =>
+      rows.push(["station", `stop ${k + 1}`, r.label, Math.round(st.mile), st.name, "mile from origin", STATUS_LABEL.screening, "RailPlanner city list"]),
+    );
+  }
+  const total = PRIORITIES.reduce((a, p) => a + (weights[p.id] ?? 0), 0) || 1;
+  for (const p of PRIORITIES)
+    rows.push(["priority", p.label, "", weights[p.id] ?? 0, `${Math.round((100 * (weights[p.id] ?? 0)) / total)}% of weight`, "weight (0-100)", STATUS_LABEL.assumption, "user"]);
+  rank(plan.routes, weights).forEach((x, k) =>
+    rows.push(["ranking", `position ${k + 1}`, plan.routes[x.index].label, +x.score.toFixed(2), x.score.toFixed(0), "score (0-100, relative)", STATUS_LABEL.assumption, "weighted measures"]),
+  );
+  rows.push(["meta", "corridor", "", "", `${plan.origin.name}, ${plan.origin.state} to ${plan.destination.name}, ${plan.destination.state}`, "", "", ""]);
+  rows.push(["meta", "model version", "", "", plan.model_version, "", "", ""]);
+  rows.push(["meta", "exported", "", "", new Date().toISOString(), "", "", ""]);
+  return rows.map((r) => r.map(csvCell).join(",")).join("\r\n");
 }

@@ -1,5 +1,5 @@
 {
- "request_id": 62,
+ "request_id": 72,
  "origin": {
   "id": 4,
   "name": "Syracuse",
@@ -18,7 +18,7 @@
  },
  "routes": [
   {
-   "id": 184,
+   "id": 214,
    "rank": 1,
    "key": "row",
    "label": "Existing corridor upgrade",
@@ -1069,7 +1069,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.8,
-     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 1954600000.0,
       "federal_usd": 250000000.0,
@@ -1101,7 +1101,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 2 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 2 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 1954600000.0,
       "federal_usd": 25000000.0,
@@ -1129,7 +1129,7 @@
    ]
   },
   {
-   "id": 185,
+   "id": 215,
    "rank": 2,
    "key": "direct",
    "label": "New direct alignment",
@@ -1867,7 +1867,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($3.8B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($3.8B) exceeds RailPlanner's assumed largest single award ($3.0B), so the project would likely need to be phased across several awards.",
      "cost_share": {
       "basis_cost_usd": 3792400000.0,
       "federal_usd": 3000000000.0,
@@ -1899,7 +1899,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.55,
-     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 3792400000.0,
       "federal_usd": 250000000.0,
@@ -1915,7 +1915,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 2 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 2 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 3792400000.0,
       "federal_usd": 25000000.0,
@@ -1943,7 +1943,7 @@
    ]
   },
   {
-   "id": 186,
+   "id": 216,
    "rank": 3,
    "key": "cities",
    "label": "Via intermediate cities",
@@ -3031,7 +3031,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.8,
-     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 3037600000.0,
       "federal_usd": 250000000.0,
@@ -3063,7 +3063,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 2 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 2 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 3037600000.0,
       "federal_usd": 25000000.0,
@@ -3133,7 +3133,7 @@
    "flag": "approximate (proxy, demo only)"
   }
  },
- "created_at": "2026-10-25T03:17:15+00:00",
+ "created_at": "2026-10-25T03:46:50+00:00",
  "cached": false,
- "model_version": "2026.10.25-2"
+ "model_version": "2026.10.25-3"
 }

@@ -1,5 +1,5 @@
 import type { PlanResult } from "../api";
-import { METRICS, NOT_MODELED, STATUS_HELP, STATUS_LABEL, type Status } from "../metrics";
+import { METRICS, NOT_MODELED, STATUS_HELP, type Status } from "../metrics";
 import type { Weights } from "../scoring";
 import PrioritiesPanel from "./PrioritiesPanel";
 import { Direction, StatusChip } from "./ui";
@@ -10,7 +10,7 @@ interface Props {
   onWeights: (w: Weights) => void;
 }
 
-const STATUSES: Status[] = ["calculated", "approximate", "estimate", "rule-based", "not-modeled"];
+const STATUSES: Status[] = ["observed", "assumption", "estimate", "screening", "not-modeled", "unavailable"];
 
 export default function MethodologyTab({ plan, weights, onWeights }: Props) {
   const sim = plan.routes[0]?.simulation;
@@ -43,51 +43,51 @@ export default function MethodologyTab({ plan, weights, onWeights }: Props) {
       <PrioritiesPanel routes={plan.routes} weights={weights} onChange={onWeights} />
 
       <section className="panel">
-        <h3>Measures</h3>
-        <div className="table-wrap">
-          <table className="data registry">
-            <thead>
-              <tr>
-                <th scope="col">Measure</th>
-                <th scope="col">Definition</th>
-                <th scope="col">Status</th>
-                <th scope="col">Source and year</th>
-                <th scope="col">Coverage</th>
-                <th scope="col">Method</th>
-              </tr>
-            </thead>
-            <tbody>
-              {METRICS.map((m) => (
-                <tr key={m.id}>
-                  <th scope="row">
-                    {m.label}
-                    <span className="m-meta">
-                      <Direction d={m.direction} />
-                    </span>
-                  </th>
-                  <td>{m.definition}</td>
-                  <td>{STATUS_LABEL[m.status]}</td>
-                  <td>
-                    {m.source}
-                    <span className="muted"> · {m.dataYear}</span>
-                  </td>
-                  <td>{m.coverage}</td>
-                  <td>{m.method}</td>
-                </tr>
-              ))}
-              {NOT_MODELED.map((g) => (
-                <tr key={g.id} className="gap-row">
-                  <th scope="row">{g.label}</th>
-                  <td>{g.why}</td>
-                  <td>{STATUS_LABEL["not-modeled"]}</td>
-                  <td colSpan={3} className="muted">
-                    Needs: {g.needs}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <h3>Measures and their provenance</h3>
+        <p className="fine">Open a measure to see how it is produced and what it cannot tell you.</p>
+        <div className="registry-list">
+          {METRICS.map((m) => (
+            <details key={m.id} className="registry-item">
+              <summary>
+                <span className="reg-name">{m.label}</span>
+                <StatusChip status={m.status} />
+                <Direction d={m.direction} />
+              </summary>
+              <p>{m.definition}</p>
+              <dl className="prov">
+                {([
+                  ["Units", m.unit],
+                  ["Source", m.source],
+                  ["Data year", m.dataYear],
+                  ["Coverage", m.coverage],
+                  ["Method", m.method],
+                  ["Key assumptions", m.assumptions],
+                  ["Uncertainty", m.uncertainty],
+                  ["Known limitations", m.limitations],
+                ] as const).map(([k, v]) => (
+                  <div key={k}>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          ))}
+          {NOT_MODELED.map((g) => (
+            <details key={g.id} className="registry-item gap">
+              <summary>
+                <span className="reg-name">{g.label}</span>
+                <StatusChip status="not-modeled" />
+              </summary>
+              <p>{g.why}</p>
+              <p className="muted">Inputs needed: {g.needs}</p>
+            </details>
+          ))}
         </div>
+        <p className="fine">
+          RailPlanner does not give numerical confidence scores: there is no validated method to derive them from
+          these inputs. Status labels and the limitations above are the honest substitute.
+        </p>
       </section>
 
       <div className="two-col">
@@ -107,7 +107,7 @@ export default function MethodologyTab({ plan, weights, onWeights }: Props) {
                 <dt>{k.replace(/_/g, " ")}</dt>
                 <dd>
                   {v.source}
-                  {v.flag !== "real" && <span className="chip chip-approximate">{v.flag}</span>}
+                  {v.flag !== "real" && <span className="chip chip-screening">{v.flag}</span>}
                 </dd>
               </div>
             ))}

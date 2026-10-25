@@ -3,7 +3,7 @@
 Inputs: project type (upgrade if >= 60% on existing ROW, else new alignment), P50 cost,
 stations served (NEC eligibility), and program award ranges. Each match gets a 0-1 fit score,
 a plain-language rationale built only from these computed values, and cost-share math at the
-P50 cost: federal = min(match % x P50, top of typical award range).
+P50 cost: federal = min(match % x P50, top of RailPlanner's assumed award range).
 """
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ def match_route(stats: RouteStats, p50_cost: float) -> list[FundingMatch]:
             fit = 0.9 if p50_cost >= 1e9 else 0.65
             federal = min(match * p50_cost, hi)
             gap = "" if federal >= match * p50_cost else (
-                f" The P50 cost ({usd(p50_cost)}) exceeds the largest typical award ({usd(hi)}), "
+                f" The P50 cost ({usd(p50_cost)}) exceeds RailPlanner's assumed largest single award ({usd(hi)}), "
                 "so the project would likely need to be phased across several awards.")
             why = (f"Core federal capital program for intercity passenger rail; this route is {type_text}. "
                    f"Up to {p['federal_match_pct']}% federal share.{gap}{multi_state}")
@@ -88,12 +88,12 @@ def match_route(stats: RouteStats, p50_cost: float) -> list[FundingMatch]:
             fit = 0.8 if project_type == "upgrade" else 0.55
             federal = min(match * p50_cost, hi)
             why = (f"Fits {'well' if project_type == 'upgrade' else 'partially'}: CRISI funds safety, capacity and "
-                   f"grade-crossing work on existing lines. Awards top out near {usd(hi)}, so it suits "
+                   f"grade-crossing work on existing lines. RailPlanner assumes awards up to about {usd(hi)}, so it suits "
                    "discrete packages such as grade separations or sidings.")
         elif p["id"] == "build":
             fit = 0.45
             federal = min(match * p50_cost, hi)
-            why = (f"Capped near {usd(hi)} per award: useful for a station or grade separation "
+            why = (f"Capped at {usd(hi)} per award (FY2026 notice): useful for a station or grade separation "
                    f"(the route serves {len(stats.stations)} stations), not the core build.")
         elif p["id"] == "rrif":
             fit = 0.7 if project_type == "upgrade" else 0.6

@@ -1,5 +1,5 @@
 {
-  "_note": "APPROXIMATE program parameters for demo purposes, summarized from public program descriptions. Award ranges and match rules change each funding round; verify against current NOFOs before use.",
+  "_note": "Program facts below were checked against the official pages listed in each entry on the verified_on date. Numeric fields marked as assumptions (assumed_award_usd, loan sizing) are RailPlanner screening assumptions, not program limits. Re-verify against the current NOFO before relying on any of this.",
   "programs": [
     {
       "id": "fsp_national",
@@ -9,8 +9,22 @@
       "eligible_project_types": ["new_alignment", "upgrade"],
       "federal_match_pct": 80,
       "typical_award_usd": [100000000, 3000000000],
-      "notes": "Primary federal capital program for intercity passenger rail outside the Northeast Corridor main line. Projects in the Corridor ID pipeline are prioritized.",
-      "approximate": true
+      "notes": "Primary federal capital program for intercity passenger rail outside the Northeast Corridor main line.",
+      "approximate": true,
+      "guide": {
+        "applicants": "States (including DC), groups of States, interstate compacts, public agencies or authorities established by States, political subdivisions, Amtrak, federally recognized Tribes, or combinations of these.",
+        "stage": "Capital projects, or planning, environmental review and final design of an eligible project. Competitive applications generally show a service development plan and progress through environmental review.",
+        "match": "Federal share may not exceed 80% of project cost (49 U.S.C. 24911); at least 20% non-federal.",
+        "limits": "No fixed award cap is published. RailPlanner assumes a largest single award of $3.0B for screening; this is an assumption, not a program limit.",
+        "status": "FY2024–2026 round closed; project selections announced August 14, 2026. No open round listed as of the verification date.",
+        "next_step": "Advance the corridor through Corridor ID (service development plan, then preliminary engineering and environmental review) so it is ready for the next FSP-National notice.",
+        "fit_rule": "0.90 if the median cost is $1B or more (the program's core use), otherwise 0.65. Eligible for either project type.",
+        "source_url": "https://railroads.dot.gov/partnership-program",
+        "source_label": "FRA, National Railroad Partnership Program page",
+        "verified_on": "2026-10-24",
+        "verification": "verified",
+        "unverified_fields": ["typical award size (RailPlanner assumption)"]
+      }
     },
     {
       "id": "fsp_nec",
@@ -20,9 +34,23 @@
       "eligible_project_types": ["upgrade"],
       "federal_match_pct": 80,
       "typical_award_usd": [50000000, 4000000000],
-      "notes": "Limited to projects on the Northeast Corridor (Washington-Boston main line). Only NEC-adjacent elements, such as New York Penn Station approaches, could qualify.",
+      "notes": "Limited to projects on the Northeast Corridor (Washington–Boston main line).",
       "requires_nec": true,
-      "approximate": true
+      "approximate": true,
+      "guide": {
+        "applicants": "Same eligible recipients as FSP-National; projects must be located on the Northeast Corridor.",
+        "stage": "Projects listed in, or consistent with, FRA's Northeast Corridor Project Inventory.",
+        "match": "Federal share may not exceed 80% of project cost (49 U.S.C. 24911).",
+        "limits": "Only the Northeast Corridor portion of a route can qualify. RailPlanner assumes a largest single award of $4.0B for screening.",
+        "status": "FY2025–2026 round (applications due May 5, 2026) closed; selections announced. No open round listed as of the verification date.",
+        "next_step": "Coordinate with Amtrak and the NEC Commission to have any Northeast Corridor elements (for example, New York approaches) included in the NEC Project Inventory.",
+        "fit_rule": "0.60 if the route uses the New York–Philadelphia main line; 0.35 if it only reaches New York City; otherwise not a fit.",
+        "source_url": "https://railroads.dot.gov/partnership-program",
+        "source_label": "FRA, National Railroad Partnership Program page (Partnership-NEC section)",
+        "verified_on": "2026-10-24",
+        "verification": "verified",
+        "unverified_fields": ["share of route cost attributable to the NEC (RailPlanner assumption)", "typical award size (RailPlanner assumption)"]
+      }
     },
     {
       "id": "crisi",
@@ -32,8 +60,22 @@
       "eligible_project_types": ["upgrade", "new_alignment"],
       "federal_match_pct": 80,
       "typical_award_usd": [5000000, 250000000],
-      "notes": "Safety, capacity and reliability improvements, including grade crossings, sidings and passenger rail improvements on existing lines.",
-      "approximate": true
+      "notes": "Safety, efficiency and reliability improvements for intercity passenger and freight rail, including grade crossings and capacity on existing lines.",
+      "approximate": true,
+      "guide": {
+        "applicants": "States, groups of States, interstate compacts, public agencies, political subdivisions, Amtrak and other rail carriers providing intercity passenger service, Class II and III railroads, and others listed in 49 U.S.C. 22907.",
+        "stage": "Discrete capital packages (grade crossings, sidings, signals, track and bridge work) and related planning, environmental and design work.",
+        "match": "Federal share may not exceed 80% of project cost (49 U.S.C. 22907).",
+        "limits": "No fixed award cap is published. RailPlanner assumes a largest single award of $250M, so CRISI suits packages, not a whole corridor.",
+        "status": "FY2025–2026 round closed; selections announced October 19, 2026. No open round listed as of the verification date.",
+        "next_step": "Identify discrete safety and capacity packages on the existing corridor (grade crossings, sidings) with the host railroad, ready for the next CRISI notice.",
+        "fit_rule": "0.80 for routes mostly on existing rail (where CRISI-type work concentrates), 0.55 for new alignments.",
+        "source_url": "https://railroads.dot.gov/grants-loans/consolidated-rail-infrastructure-and-safety-improvements-crisi-program",
+        "source_label": "FRA, CRISI Program page",
+        "verified_on": "2026-10-24",
+        "verification": "verified",
+        "unverified_fields": ["typical award size (RailPlanner assumption)"]
+      }
     },
     {
       "id": "build",
@@ -43,8 +85,22 @@
       "eligible_project_types": ["upgrade", "new_alignment"],
       "federal_match_pct": 80,
       "typical_award_usd": [1000000, 25000000],
-      "notes": "Highly competitive surface transportation grants capped at about $25M per award; best suited to discrete components such as a station or grade separation.",
-      "approximate": true
+      "notes": "Competitive surface transportation grants with a maximum award of $25M; suited to a station or grade separation, not a corridor.",
+      "approximate": true,
+      "guide": {
+        "applicants": "States and DC, territories, local governments, public agencies or authorities established by States, special-purpose districts with a transportation function, Tribes, transit agencies, and multi-State or multi-jurisdictional groups of eligible entities.",
+        "stage": "Capital projects (minimum award $5M urban, $1M rural) or planning, preparation and design (no minimum).",
+        "match": "Federal share may not exceed 80% for urban projects; it may exceed 80% for rural projects and those in Areas of Persistent Poverty or Historically Disadvantaged Communities.",
+        "limits": "Maximum award $25M (FY2026 notice).",
+        "status": "FY2026 round closed (applications were due February 24, 2026). A FY2027 notice had not been found as of the verification date.",
+        "next_step": "Package a station, grade separation or design phase as a stand-alone application for the next BUILD round.",
+        "fit_rule": "0.45 for any route: useful for components, not the core build.",
+        "source_url": "https://www.transportation.gov/BUILDgrants/FAQs",
+        "source_label": "USDOT, FY2026 BUILD Frequently Asked Questions",
+        "verified_on": "2026-10-24",
+        "verification": "verified",
+        "unverified_fields": ["FY2027 schedule"]
+      }
     },
     {
       "id": "rrif",
@@ -55,8 +111,22 @@
       "federal_match_pct": 0,
       "typical_award_usd": [10000000, 3000000000],
       "max_loan_pct": 100,
-      "notes": "Low-interest direct loans and loan guarantees for up to 100% of eligible costs. Must be repaid, so it fits the non-federal share when a revenue source exists.",
-      "approximate": true
+      "notes": "Direct loans and loan guarantees that must be repaid.",
+      "approximate": true,
+      "guide": {
+        "applicants": "Public and private sponsors of railroad projects, including state and local governments, government-sponsored authorities and railroads.",
+        "stage": "Projects with a defined scope, cost estimate and a dedicated repayment source; the Bureau's credit review takes place after initial consultation.",
+        "match": "Not a grant: a loan that must be repaid. Can finance up to 100% of eligible project costs.",
+        "limits": "Repayment up to 35 years (in some cases 75), at the government's cost of borrowing. RailPlanner sizes the loan at 20% of the median cost to illustrate financing a non-federal share; this is an assumption.",
+        "status": "Applications are handled through the Build America Bureau rather than a fixed funding round. The application timetable was not confirmed on the verification date.",
+        "next_step": "Identify a repayment source (state appropriations, farebox or value capture) and request an initial consultation with the Build America Bureau.",
+        "fit_rule": "0.70 for routes mostly on existing rail, 0.60 for new alignments; fit depends on having a repayment source, which is not modeled.",
+        "source_url": "https://www.transportation.gov/buildamerica/financing/rrif",
+        "source_label": "USDOT Build America Bureau, RRIF page",
+        "verified_on": "2026-10-24",
+        "verification": "partial",
+        "unverified_fields": ["application timetable", "use alongside federal grants for the non-federal share"]
+      }
     },
     {
       "id": "corridor_id",
@@ -66,8 +136,22 @@
       "eligible_project_types": ["upgrade", "new_alignment"],
       "federal_match_pct": 100,
       "typical_award_usd": [500000, 500000],
-      "notes": "Planning pipeline for new or improved intercity corridors. Step 1 (scoping) is federally funded at about $500K; later service-development steps need a non-federal share. This is the gateway to FSP-National capital funding.",
-      "approximate": true
+      "notes": "Planning and development pipeline for intercity passenger rail corridors.",
+      "approximate": true,
+      "guide": {
+        "applicants": "Amtrak, States, groups of States, entities implementing interstate compacts, regional passenger rail authorities, regional planning organizations, political subdivisions and federally recognized Tribes.",
+        "stage": "Entry point for a new or improved corridor, before a service development plan.",
+        "match": "Initial award of $500,000 per selected corridor for Step 1 scoping. Later steps (service development plan, then preliminary engineering and environmental review) have their own funding terms set in the program notice.",
+        "limits": "Step 1: $500,000 per corridor.",
+        "status": "Corridors were selected from the FY2022 solicitation (announced December 8, 2023). No new solicitation was listed as of the verification date.",
+        "next_step": "Check whether an overlapping corridor is already in the program and coordinate with its sponsor; otherwise prepare a corridor proposal for the next solicitation.",
+        "fit_rule": "0.95 for any intercity corridor: it is the planning gateway FRA uses to build its capital project pipeline.",
+        "source_url": "https://railroads.dot.gov/corridor-ID-program",
+        "source_label": "FRA, Corridor ID Program page",
+        "verified_on": "2026-10-24",
+        "verification": "partial",
+        "unverified_fields": ["non-federal share for Steps 2 and 3", "timing of the next solicitation"]
+      }
     }
   ]
 }

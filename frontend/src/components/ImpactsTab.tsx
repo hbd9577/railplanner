@@ -79,7 +79,7 @@ export default function ImpactsTab({ plan, selected, onSelect }: Props) {
 
       <section className="panel">
         <h3>
-          Miles through flagged areas <StatusChip status="approximate" />
+          Miles through flagged areas <StatusChip status="screening" />
         </h3>
         <table className="data">
           <thead>

@@ -1,5 +1,5 @@
 {
- "request_id": 59,
+ "request_id": 69,
  "origin": {
   "id": 1,
   "name": "New York City",
@@ -18,7 +18,7 @@
  },
  "routes": [
   {
-   "id": 175,
+   "id": 205,
    "rank": 1,
    "key": "lakeshore",
    "label": "Lake Shore corridor upgrade",
@@ -6999,7 +6999,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is an upgrade of an existing rail corridor. Up to 80% federal share. The P50 cost ($25.2B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards. The route spans 5 states (IL, IN, NY, OH, PA), so it needs a multi-state sponsor or interstate compact.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is an upgrade of an existing rail corridor. Up to 80% federal share. The P50 cost ($25.2B) exceeds RailPlanner's assumed largest single award ($3.0B), so the project would likely need to be phased across several awards. The route spans 5 states (IL, IN, NY, OH, PA), so it needs a multi-state sponsor or interstate compact.",
      "cost_share": {
       "basis_cost_usd": 25244100000.0,
       "federal_usd": 3000000000.0,
@@ -7015,7 +7015,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.8,
-     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 25244100000.0,
       "federal_usd": 250000000.0,
@@ -7047,7 +7047,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 11 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 11 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 25244100000.0,
       "federal_usd": 25000000.0,
@@ -7075,7 +7075,7 @@
    ]
   },
   {
-   "id": 176,
+   "id": 206,
    "rank": 2,
    "key": "keystone",
    "label": "Pennsylvania corridor upgrade",
@@ -14213,7 +14213,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is an upgrade of an existing rail corridor. Up to 80% federal share. The P50 cost ($24.3B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards. The route spans 4 states (IL, IN, NY, PA), so it needs a multi-state sponsor or interstate compact.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is an upgrade of an existing rail corridor. Up to 80% federal share. The P50 cost ($24.3B) exceeds RailPlanner's assumed largest single award ($3.0B), so the project would likely need to be phased across several awards. The route spans 4 states (IL, IN, NY, PA), so it needs a multi-state sponsor or interstate compact.",
      "cost_share": {
       "basis_cost_usd": 24341000000.0,
       "federal_usd": 3000000000.0,
@@ -14229,7 +14229,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.8,
-     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 24341000000.0,
       "federal_usd": 250000000.0,
@@ -14277,7 +14277,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 6 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 6 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 24341000000.0,
       "federal_usd": 25000000.0,
@@ -14289,7 +14289,7 @@
    ]
   },
   {
-   "id": 177,
+   "id": 207,
    "rank": 3,
    "key": "direct",
    "label": "New direct high-speed alignment",
@@ -17811,7 +17811,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($35.5B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards. The route spans 2 states (IL, NY), so it needs a multi-state sponsor or interstate compact.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($35.5B) exceeds RailPlanner's assumed largest single award ($3.0B), so the project would likely need to be phased across several awards. The route spans 2 states (IL, NY), so it needs a multi-state sponsor or interstate compact.",
      "cost_share": {
       "basis_cost_usd": 35466200000.0,
       "federal_usd": 3000000000.0,
@@ -17843,7 +17843,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.55,
-     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 35466200000.0,
       "federal_usd": 250000000.0,
@@ -17859,7 +17859,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 2 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 2 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 35466200000.0,
       "federal_usd": 25000000.0,
@@ -17929,7 +17929,7 @@
    "flag": "approximate (proxy, demo only)"
   }
  },
- "created_at": "2026-10-25T03:17:12+00:00",
+ "created_at": "2026-10-25T03:46:47+00:00",
  "cached": false,
- "model_version": "2026.10.25-2"
+ "model_version": "2026.10.25-3"
 }

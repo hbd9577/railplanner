@@ -1,7 +1,8 @@
 import type { PlanResult } from "../api";
 import { years, usd } from "../format";
 import { decisionSummary } from "../summary";
-import type { Weights } from "../scoring";
+import { PRIORITIES, missingPriorities, type Weights } from "../scoring";
+import { list } from "../format";
 import { AltName } from "./ui";
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 
 export default function DecisionSummary({ plan, weights, defaultWeights, onOpenPriorities, onOpenTab }: Props) {
   const s = decisionSummary(plan, weights);
+  const missing = new Set(missingPriorities(plan.routes).map((p) => p.id));
   const c = s.leader.simulation.cost;
   const d = s.leader.simulation.duration;
   return (
@@ -25,8 +27,11 @@ export default function DecisionSummary({ plan, weights, defaultWeights, onOpenP
         <AltName r={s.leader} i={s.leaderIndex} /> leads under the current model
       </h2>
       <p className="qualifier">
-        Ranked on {defaultWeights ? "the default" : "your"} priorities: capital cost, delivery time, residents near
-        stations and new track in flagged areas.{" "}
+        Ranked on {defaultWeights ? "the default" : "your"} priorities:{" "}
+        {list(
+          PRIORITIES.filter((p) => (weights[p.id] ?? 0) > 0 && !missing.has(p.id)).map((p) => p.label.toLowerCase()),
+        ) || "none (all weights are zero)"}
+        .{" "}
         <button className="link" onClick={onOpenPriorities}>
           Adjust priorities
         </button>

@@ -21,8 +21,7 @@ def payload(plan):
 
 
 def _sections(text: str) -> str:
-    return json.dumps({k: text for k in ["title", "executive_summary", "corridor_description", "cost_and_schedule",
-                                         "funding_strategy", "risks", "next_steps"]})
+    return json.dumps({k: text for k in ["title", *(key for key, _ in proposal.SECTIONS)]})
 
 
 def test_number_check_accepts_payload_figures(payload):
@@ -100,3 +99,29 @@ def test_endpoints(plan, monkeypatch):
 
         monkeypatch.setattr(proposal, "_generate", down)
         assert client.post(f"/ask/{plan.request_id}", json={"question": "Why?"}).status_code == 503
+
+
+def test_scenario_reaches_payload_and_record(plan, monkeypatch):
+    names = [r.label for r in plan.routes]
+    scen = proposal.Scenario(priorities=[proposal.Priority(label="Lower capital cost", share_pct=60)],
+                             ranking=names, selected=names[1], is_default=False)
+    payload = proposal.build_payload(plan, scen)
+    assert payload["scenario"]["leads_under_these_priorities"] == names[0]
+    monkeypatch.setattr(proposal, "_generate", lambda *a, **k: _sections("A draft with no figures."))
+    res = proposal.generate_proposal(plan, scen, "test-version")
+    md = res["markdown"]
+    assert res["number_check"]["passed"]
+    assert "## Scenario Record" in md and "Lower capital cost 60%" in md and "test-version" in md
+    assert "## Sources" in md and "railroads.dot.gov" in md
+
+
+def test_ask_uses_detail_length(plan, monkeypatch):
+    seen = {}
+
+    def fake(contents, system, schema=None, temperature=0.3):
+        seen["system"] = system
+        return "Short answer."
+
+    monkeypatch.setattr(proposal, "_generate", fake)
+    proposal.ask("Why?", plan, detail=True)
+    assert "250 words" in seen["system"] and "{length}" not in seen["system"]

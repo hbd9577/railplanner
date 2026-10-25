@@ -25,7 +25,7 @@ log = logging.getLogger(__name__)
 
 # Bump when routing/scoring/simulation changes what a plan contains; older stored plans and demo
 # caches are then recomputed instead of being served.
-MODEL_VERSION = "2026.10.25-2"
+MODEL_VERSION = "2026.10.25-3"
 
 
 def assumptions(runs: int) -> list[str]:

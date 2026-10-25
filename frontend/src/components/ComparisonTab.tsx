@@ -74,8 +74,10 @@ export default function ComparisonTab({ routes, selected, leader, onSelect }: Pr
                 </tr>
                 {metrics.map((m) => {
                   const vals = routes.map(m.get);
-                  const max = Math.max(...vals.map(Math.abs)) || 1;
-                  const best = m.direction === "lower" ? Math.min(...vals) : Math.max(...vals);
+                  const finite = vals.filter(Number.isFinite);
+                  const max = Math.max(...finite.map(Math.abs), 0) || 1;
+                  const complete = finite.length === vals.length;
+                  const best = !complete ? NaN : m.direction === "lower" ? Math.min(...vals) : Math.max(...vals);
                   const unique = vals.filter((v) => v === best).length === 1;
                   return (
                     <tr key={m.id}>
@@ -96,11 +98,11 @@ export default function ComparisonTab({ routes, selected, leader, onSelect }: Pr
                               <span className="lead-mark">{m.direction === "lower" ? "lowest" : "highest"}</span>
                             )}
                           </span>
-                          {i !== baseline && (
+                          {i !== baseline && Number.isFinite(v) && Number.isFinite(m.get(base)) && (
                             <span className="delta num-cell">{signed(v - m.get(base), m.fmt)} vs {base.rank}</span>
                           )}
                           <span className="bar" aria-hidden="true">
-                            <span style={{ width: `${(Math.abs(v) / max) * 100}%`, background: altStyle(i).color }} />
+                            <span style={{ width: `${Number.isFinite(v) ? (Math.abs(v) / max) * 100 : 0}%`, background: altStyle(i).color }} />
                           </span>
                         </td>
                       ))}

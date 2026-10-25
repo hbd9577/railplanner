@@ -1,5 +1,5 @@
 // Small shared pieces: alternative badges, status chips, and on-demand metric definitions.
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { RouteResult } from "../api";
 import { altStyle } from "../format";
 import { STATUS_HELP, STATUS_LABEL, type Metric, type Status } from "../metrics";
@@ -38,12 +38,25 @@ export function StatusChip({ status }: { status: Status }) {
   );
 }
 
-/** "About this measure" disclosure: definition, source, year, coverage, method. */
+/** "About this measure": definition, units, status, provenance, assumptions, uncertainty, limitations. */
 export function MetricInfo({ m }: { m: Metric }) {
   const [open, setOpen] = useState(false);
   const id = useId();
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent | KeyboardEvent) => {
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("mousedown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, [open]);
   return (
-    <span className="info">
+    <span className="info" ref={ref}>
       <button
         type="button"
         className="info-btn"
@@ -59,6 +72,8 @@ export function MetricInfo({ m }: { m: Metric }) {
           <strong>{m.label}</strong>
           <span>{m.definition}</span>
           <span className="info-grid">
+            <span>Units</span>
+            <span>{m.unit}</span>
             <span>Status</span>
             <span>{STATUS_LABEL[m.status]}</span>
             <span>Preferred</span>
@@ -71,6 +86,12 @@ export function MetricInfo({ m }: { m: Metric }) {
             <span>{m.coverage}</span>
             <span>Method</span>
             <span>{m.method}</span>
+            <span>Assumes</span>
+            <span>{m.assumptions}</span>
+            <span>Uncertainty</span>
+            <span>{m.uncertainty}</span>
+            <span>Limitations</span>
+            <span>{m.limitations}</span>
           </span>
         </span>
       )}

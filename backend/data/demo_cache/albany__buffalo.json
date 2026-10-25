@@ -1,5 +1,5 @@
 {
- "request_id": 60,
+ "request_id": 70,
  "origin": {
   "id": 5,
   "name": "Albany",
@@ -18,7 +18,7 @@
  },
  "routes": [
   {
-   "id": 178,
+   "id": 208,
    "rank": 1,
    "key": "row",
    "label": "Existing corridor upgrade",
@@ -2601,7 +2601,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is an upgrade of an existing rail corridor. Up to 80% federal share. The P50 cost ($6.9B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is an upgrade of an existing rail corridor. Up to 80% federal share. The P50 cost ($6.9B) exceeds RailPlanner's assumed largest single award ($3.0B), so the project would likely need to be phased across several awards.",
      "cost_share": {
       "basis_cost_usd": 6877300000.0,
       "federal_usd": 3000000000.0,
@@ -2617,7 +2617,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.8,
-     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits well: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 6877300000.0,
       "federal_usd": 250000000.0,
@@ -2649,7 +2649,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 4 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 4 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 6877300000.0,
       "federal_usd": 25000000.0,
@@ -2677,7 +2677,7 @@
    ]
   },
   {
-   "id": 179,
+   "id": 209,
    "rank": 2,
    "key": "direct",
    "label": "New direct alignment",
@@ -4394,7 +4394,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($13.0B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($13.0B) exceeds RailPlanner's assumed largest single award ($3.0B), so the project would likely need to be phased across several awards.",
      "cost_share": {
       "basis_cost_usd": 13003500000.0,
       "federal_usd": 3000000000.0,
@@ -4426,7 +4426,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.55,
-     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 13003500000.0,
       "federal_usd": 250000000.0,
@@ -4442,7 +4442,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 2 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 2 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 13003500000.0,
       "federal_usd": 25000000.0,
@@ -4470,7 +4470,7 @@
    ]
   },
   {
-   "id": 180,
+   "id": 210,
    "rank": 3,
    "key": "cities",
    "label": "Via intermediate cities",
@@ -7099,7 +7099,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($13.2B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($13.2B) exceeds RailPlanner's assumed largest single award ($3.0B), so the project would likely need to be phased across several awards.",
      "cost_share": {
       "basis_cost_usd": 13159400000.0,
       "federal_usd": 3000000000.0,
@@ -7131,7 +7131,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.55,
-     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
+     "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. RailPlanner assumes awards up to about $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
       "basis_cost_usd": 13159400000.0,
       "federal_usd": 250000000.0,
@@ -7147,7 +7147,7 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.45,
-     "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 5 stations), not the core build.",
+     "rationale": "Capped at $25M per award (FY2026 notice): useful for a station or grade separation (the route serves 5 stations), not the core build.",
      "cost_share": {
       "basis_cost_usd": 13159400000.0,
       "federal_usd": 25000000.0,
@@ -7217,7 +7217,7 @@
    "flag": "approximate (proxy, demo only)"
   }
  },
- "created_at": "2026-10-25T03:17:13+00:00",
+ "created_at": "2026-10-25T03:46:48+00:00",
  "cached": false,
- "model_version": "2026.10.25-2"
+ "model_version": "2026.10.25-3"
 }

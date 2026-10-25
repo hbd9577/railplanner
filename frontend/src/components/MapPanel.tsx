@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { City, PlanResult } from "../api";
 import { altStyle, miles } from "../format";
 import MapView, { type Basemap, type FitRequest, type Layers } from "./MapView";
@@ -36,8 +37,17 @@ const LAYER_LABELS: [keyof Layers, string][] = [
 
 export default function MapPanel(p: Props) {
   const route = p.plan?.routes[p.selected];
+  const [view, setView] = useState<"map" | "list">("map");
   return (
-    <section className="map-panel" aria-label="Map of alternatives">
+    <section className={`map-panel view-${p.pickStep !== "off" ? "map" : view}`} aria-label="Map of alternatives">
+      <div className="seg view-toggle" role="radiogroup" aria-label="Show map or list">
+        <button role="radio" aria-checked={view === "map"} className={view === "map" ? "on" : ""} onClick={() => setView("map")}>
+          Map
+        </button>
+        <button role="radio" aria-checked={view === "list"} className={view === "list" ? "on" : ""} onClick={() => setView("list")}>
+          List
+        </button>
+      </div>
       <div className="map-frame">
         <MapView
           cities={p.cities}
