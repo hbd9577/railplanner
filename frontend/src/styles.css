@@ -110,7 +110,7 @@ input[aria-invalid="true"] { border-color: var(--danger); }
   display: flex; flex-direction: column; gap: 12px;
 }
 .brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.wordmark { font-family: var(--display); font-weight: 500; font-size: 22px; letter-spacing: 0.01em; color: var(--accent-2); }
+.wordmark { font-family: var(--display); font-weight: 500; font-size: 38px; line-height: 1.05; letter-spacing: 0.01em; color: var(--accent-2); }
 .tb-tag { font-size: 12px; color: var(--ink-3); letter-spacing: 0.02em; }
 .intro h1 { font-size: 30px; margin-top: 8px; }
 .intro p { color: var(--ink-2); }
@@ -489,6 +489,7 @@ tr.changed > th, tr.changed > td { background: var(--warn-wash); }
   .tb-corridor.folded { display: none; }
   .kpis { grid-template-columns: 1fr 1fr; }
   .kpi { font-size: 24px; }
+  .wordmark { font-size: 32px; }
   .mini { grid-template-columns: repeat(2, 1fr); }
   .gg { grid-template-columns: 1fr; }
   .status-legend > div, .sources > div, .prov > div, .position > div { grid-template-columns: 1fr; gap: 2px; }
