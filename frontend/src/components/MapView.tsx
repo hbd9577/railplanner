@@ -28,13 +28,24 @@ function FitToPlan({ plan, cities }: { plan: PlanResult | null; cities: City[] }
     const pts = plan
       ? plan.routes.flatMap((r) => toLatLng(r.geometry.coordinates))
       : cities.map((c) => [c.lat, c.lon] as [number, number]);
-    // On wide screens the control panel overlays the map's left edge, so keep routes to its right.
-    const wide = map.getContainer().clientWidth >= 860;
-    // the floating header covers the top of the map, so leave room under it
-    const pad = wide
-      ? { paddingTopLeft: [OVERLAY_WIDTH + 40, HEADER_HEIGHT + 20], paddingBottomRight: [70, 50] }
-      : { paddingTopLeft: [16, 150], paddingBottomRight: [16, 30] };
-    if (pts.length) map.fitBounds(L.latLngBounds(pts), pad as L.FitBoundsOptions);
+    if (!pts.length) return;
+    const fit = () => {
+      const size = map.getSize();
+      if (size.x < 50 || size.y < 50) return; // not laid out yet (hidden tab, opening pane)
+      // On wide screens the control panel overlays the map's left edge, so keep routes to its right;
+      // the floating header covers the top of the map, so leave room under it.
+      const pad =
+        size.x >= 860
+          ? { paddingTopLeft: [OVERLAY_WIDTH + 40, HEADER_HEIGHT + 20], paddingBottomRight: [70, 50] }
+          : { paddingTopLeft: [16, 150], paddingBottomRight: [16, 30] };
+      map.fitBounds(L.latLngBounds(pts), pad as L.FitBoundsOptions);
+    };
+    fit();
+    // Refit when the map's size changes (window resize, projector switch, a pane that opened late).
+    map.on("resize", fit);
+    return () => {
+      map.off("resize", fit);
+    };
   }, [plan, cities, map]);
   return null;
 }
