@@ -16,11 +16,12 @@ function CityField({ label, cities, value, exclude, onChange }: {
   const hintId = useId();
   const current = cities.find((c) => c.id === value);
   const [text, setText] = useState(current ? cityLabel(current) : "");
-  // Re-sync only when the value changes from outside this field (swap, map pick, start over),
-  // so a partly typed name is never wiped while the user is typing.
+  // Re-sync when the value changes from outside this field (swap, map pick, start over) or when the
+  // city list arrives, but never while the user is typing, so a partly typed name is not wiped.
   const emitted = useRef<number | null | undefined>(undefined);
+  const focusedRef = useRef(false);
   useEffect(() => {
-    if (value !== emitted.current) setText(current ? cityLabel(current) : "");
+    if (value !== emitted.current || (!focusedRef.current && current)) setText(current ? cityLabel(current) : "");
     emitted.current = value;
   }, [value, current]);
   const options = cities.filter((c) => c.id !== exclude);
@@ -43,8 +44,12 @@ function CityField({ label, cities, value, exclude, onChange }: {
           emitted.current = hit ? hit.id : null;
           onChange(hit ? hit.id : null);
         }}
-        onFocus={() => setFocused(true)}
+        onFocus={() => {
+          focusedRef.current = true;
+          setFocused(true);
+        }}
         onBlur={() => {
+          focusedRef.current = false;
           setFocused(false);
           if (current) setText(cityLabel(current));
         }}
@@ -91,7 +96,7 @@ function Menu({ label, disabled, children }: { label: string; disabled?: boolean
   );
 }
 
-interface Props {
+export interface ToolbarProps {
   cities: City[];
   originId: number | null;
   destId: number | null;
@@ -120,7 +125,8 @@ interface Props {
   onDelete: (s: Scenario) => void;
 }
 
-export default function Toolbar(p: Props) {
+/** Origin, destination and the compare action; shown in the map overlay. */
+export function CorridorControls(p: ToolbarProps) {
   const sameCity = p.originId != null && p.originId === p.destId;
   // On phones the corridor fields fold into a one-line summary once results match them.
   const [editing, setEditing] = useState(false);
@@ -130,12 +136,7 @@ export default function Toolbar(p: Props) {
     if (p.loading) setEditing(false);
   }, [p.loading]);
   return (
-    <div className="toolbar" role="region" aria-label="Scenario controls">
-      <div className="tb-brand">
-        <span className="wordmark">RailPlanner</span>
-        <span className="tb-tag">Corridor screening</span>
-      </div>
-
+    <div className="corridor-controls" role="region" aria-label="Corridor">
       {folded && (
         <div className="tb-folded">
           <span>
@@ -158,8 +159,14 @@ export default function Toolbar(p: Props) {
         </button>
         {sameCity && <span className="field-hint">Origin and destination must be different cities.</span>}
       </div>
+    </div>
+  );
+}
 
-      <div className="tb-actions">
+/** Priorities, assumptions, save, share, export and reset; shown in the bar under the map. */
+export function ScenarioActions(p: ToolbarProps) {
+  return (
+    <div className="tb-actions" role="region" aria-label="Scenario actions">
         {p.hasPlan && (
           <button className={p.prioritiesOpen ? "on" : ""} aria-expanded={p.prioritiesOpen} onClick={p.onPriorities}>
             Priorities{p.customWeights ? " (custom)" : ""}
@@ -276,7 +283,6 @@ export default function Toolbar(p: Props) {
         <button className="ghost" onClick={p.onStartOver}>
           Start over
         </button>
-      </div>
     </div>
   );
 }

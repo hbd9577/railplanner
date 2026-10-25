@@ -8,9 +8,9 @@ export interface AltStyle {
 }
 
 export const ALT_STYLES: AltStyle[] = [
-  { color: "#2563a8", dash: undefined, pattern: "solid" },
-  { color: "#b4540b", dash: "10 7", pattern: "dashed" },
-  { color: "#2e7a4e", dash: "2 6", pattern: "dotted" },
+  { color: "#f2b632", dash: undefined, pattern: "solid" }, // gold
+  { color: "#dcc6a0", dash: "10 7", pattern: "dashed" }, // tan
+  { color: "#c9824a", dash: "2 6", pattern: "dotted" }, // caramel brown
 ];
 
 export function altStyle(i: number): AltStyle {

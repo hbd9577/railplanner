@@ -101,3 +101,57 @@ export default function DecisionSummary({ plan, weights, defaultWeights, onOpenP
     </section>
   );
 }
+
+/** Compact version for the map overlay: who leads, cost and opening ranges, top reasons, the main gap. */
+export function HeroSummary({ plan, weights, defaultWeights, onOpenPriorities, onOpenTab }: Props) {
+  const s = decisionSummary(plan, weights);
+  const c = s.leader.simulation.cost;
+  const d = s.leader.simulation.duration;
+  return (
+    <section className="hero-summary" aria-labelledby="hero-h">
+      <p className="eyebrow-line">
+        {plan.origin.name}, {plan.origin.state} → {plan.destination.name}, {plan.destination.state}
+      </p>
+      <h2 id="hero-h">
+        <AltName r={s.leader} i={s.leaderIndex} /> leads under the current model and {defaultWeights ? "default" : "your"} priorities
+      </h2>
+      <dl className="kpis">
+        <div>
+          <dt>Median capital cost</dt>
+          <dd>
+            <span className="kpi">{usd(c.p50)}</span>
+            <span className="kpi-range">
+              {usd(c.p10)}–{usd(c.p90)}
+            </span>
+          </dd>
+        </div>
+        <div>
+          <dt>Median time to opening</dt>
+          <dd>
+            <span className="kpi">{years(d.p50)}</span>
+            <span className="kpi-range">
+              {years(d.p10)}–{years(d.p90)}
+            </span>
+          </dd>
+        </div>
+      </dl>
+      <p className="fine">Middle 80% of modeled outcomes; illustrative cost inputs, not a budget.</p>
+      <ul className="tight hero-reasons">
+        {s.reasons.slice(0, 2).map((r) => (
+          <li key={r}>{r[0].toUpperCase() + r.slice(1)}.</li>
+        ))}
+      </ul>
+      <p className="hero-gap">
+        <strong>Service not yet modeled:</strong> frequency, travel time and ridership are not estimated.
+      </p>
+      <div className="row">
+        <button className="link" onClick={() => onOpenTab("overview")}>
+          Full summary
+        </button>
+        <button className="link" onClick={onOpenPriorities}>
+          Adjust priorities
+        </button>
+      </div>
+    </section>
+  );
+}

@@ -60,7 +60,12 @@ function Fitter({ plan, cities, selected, fit }: { plan: PlanResult | null; citi
     const doFit = () => {
       const s = map.getSize();
       if (s.x < 50 || s.y < 50) return; // not laid out yet
-      map.fitBounds(L.latLngBounds(pts), { padding: [36, 36] });
+      // on wide screens the left overlay and right legend cover the map edges, so fit into the clear middle
+      const wide = s.x >= 900;
+      map.fitBounds(L.latLngBounds(pts), {
+        paddingTopLeft: wide ? [Math.min(500, s.x * 0.36), 48] : [24, 24],
+        paddingBottomRight: wide ? [300, 48] : [24, 24],
+      });
     };
     doFit();
     map.on("resize", doFit);
@@ -122,7 +127,7 @@ export default function MapView(p: Props) {
     : [];
 
   return (
-    <MapContainer className="map" center={[41.6, -79.5]} zoom={6} minZoom={4} scrollWheelZoom={false} zoomControl={false}>
+    <MapContainer className="map" center={[41.6, -79.5]} zoom={6} minZoom={4} scrollWheelZoom={false} zoomControl={false} zoomSnap={0.25} zoomDelta={0.5}>
       <ZoomControl position="topright" />
       {p.basemap === "satellite" ? (
         <TileLayer
@@ -205,7 +210,7 @@ export default function MapView(p: Props) {
         const building = sel && p.animate;
         return (
           <Fragment key={r.key}>
-            <Polyline positions={pts} pathOptions={{ color: "#ffffff", weight: sel ? 9 : 5, opacity: sel ? 0.95 : 0.7 }} interactive={false} />
+            <Polyline positions={pts} pathOptions={{ color: "#1a120a", weight: sel ? 9 : 5, opacity: sel ? 0.9 : 0.6 }} interactive={false} />
             <Polyline
               positions={pts}
               pathOptions={{
@@ -252,7 +257,7 @@ export default function MapView(p: Props) {
             key={c.id}
             center={[c.lat, c.lon]}
             radius={p.pickMode ? 7 : 4}
-            pathOptions={{ color: "#ffffff", weight: 1.5, fillColor: p.pickMode ? "#1f2937" : "#6b7280", fillOpacity: 1 }}
+            pathOptions={{ color: "#1a120a", weight: 1.5, fillColor: p.pickMode ? "#f2b632" : "#dcc6a0", fillOpacity: 1 }}
             eventHandlers={{ click: () => p.pickMode && p.onCityPick(c.id) }}
           >
             <Tooltip direction="top" offset={[0, -6]}>

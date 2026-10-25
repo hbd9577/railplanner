@@ -4,16 +4,16 @@ import AltCards from "./components/AltCards";
 import BaselinePanel from "./components/BaselinePanel";
 import ComparisonTab from "./components/ComparisonTab";
 import CostsTab from "./components/CostsTab";
-import DecisionSummary from "./components/DecisionSummary";
+import DecisionSummary, { HeroSummary } from "./components/DecisionSummary";
 import FundingTab from "./components/FundingTab";
 import ImpactsTab from "./components/ImpactsTab";
-import MapPanel from "./components/MapPanel";
+import MapPanel, { StationsList } from "./components/MapPanel";
 import type { Basemap, FitRequest, Layers } from "./components/MapView";
 import MethodologyTab from "./components/MethodologyTab";
 import PrioritiesPanel from "./components/PrioritiesPanel";
 import ProposalPanel from "./components/ProposalPanel";
 import ServiceTab from "./components/ServiceTab";
-import Toolbar from "./components/Toolbar";
+import { CorridorControls, ScenarioActions, type ToolbarProps } from "./components/Toolbar";
 import { DEFAULT_WEIGHTS, encodeWeights as encodeW, rank, weightsEqual, type Weights } from "./scoring";
 import {
   download,
@@ -57,7 +57,7 @@ export default function App() {
   const [pickStep, setPickStep] = useState<"off" | "origin" | "dest">("off");
   const [animate, setAnimate] = useState(false);
   const [replayKey, setReplayKey] = useState(0);
-  const [basemap, setBasemap] = useState<Basemap>("light");
+  const [basemap, setBasemap] = useState<Basemap>("satellite");
   const [layers, setLayers] = useState<Layers>({ rail: false, protected: false, terrain: false, labels: true });
   const [fit, setFit] = useState<FitRequest>({ kind: "all", n: 0 });
   const [saved, setSaved] = useState<Scenario[]>(() => loadScenarios());
@@ -240,113 +240,121 @@ export default function App() {
     document.getElementById(`tab-${next}`)?.focus();
   }
 
-  const mapPanel = (
-    <MapPanel
-      cities={cities}
-      plan={plan}
-      originId={originId}
-      destId={destId}
-      selected={selected}
-      leader={leader}
-      pickStep={pickStep}
-      loading={loading}
-      animate={animate}
-      replayKey={replayKey}
-      basemap={basemap}
-      layers={layers}
-      fit={fit}
-      onCityPick={onCityPick}
-      onCancelPick={() => setPickStep("off")}
-      onSelect={setSelected}
-      onFit={(kind) => setFit({ kind, n: Date.now() })}
-      onBasemap={setBasemap}
-      onLayers={setLayers}
-      onAnimate={setAnimate}
-      onReplay={() => setReplayKey((k) => k + 1)}
-    />
-  );
+  const openTab = (t: string) => {
+    if (!isTab(t)) return;
+    setTab(t);
+    document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  const openPriorities = () => {
+    setPrioritiesOpen(true);
+    document.getElementById("workspace")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const toolbar: ToolbarProps = {
+    cities,
+    originId,
+    destId,
+    onOrigin: setOriginId,
+    onDest: setDestId,
+    onSwap: () => {
+      setOriginId(destId);
+      setDestId(originId);
+    },
+    onCompare: () => canCompare && runPlan(originId!, destId!),
+    canCompare,
+    loading,
+    upToDate,
+    picking: pickStep !== "off",
+    onPick: () => setPickStep(pickStep === "off" ? "origin" : "off"),
+    hasPlan: !!plan,
+    prioritiesOpen,
+    customWeights: !weightsEqual(weights, DEFAULT_WEIGHTS),
+    onPriorities: () => setPrioritiesOpen((o) => !o),
+    onRerun: () => plan && runPlan(plan.origin.id, plan.destination.id, true),
+    onSave: save,
+    unsaved,
+    onShare: share,
+    onExport: exportAs,
+    onStartOver: startOver,
+    saved,
+    onLoad: loadScenario,
+    onCompareWith: (s) => {
+      setBaseline(s);
+      openTab("overview");
+    },
+    onDelete: removeScenario,
+  };
 
   return (
     <div className="page">
-      <Toolbar
+      <MapPanel
         cities={cities}
+        plan={plan}
         originId={originId}
         destId={destId}
-        onOrigin={setOriginId}
-        onDest={setDestId}
-        onSwap={() => {
-          setOriginId(destId);
-          setDestId(originId);
-        }}
-        onCompare={() => canCompare && runPlan(originId!, destId!)}
-        canCompare={canCompare}
+        selected={selected}
+        leader={leader}
+        pickStep={pickStep}
         loading={loading}
-        upToDate={upToDate}
-        picking={pickStep !== "off"}
-        onPick={() => {
-          setPickStep(pickStep === "off" ? "origin" : "off");
-          setTab("overview");
-        }}
-        hasPlan={!!plan}
-        prioritiesOpen={prioritiesOpen}
-        customWeights={!weightsEqual(weights, DEFAULT_WEIGHTS)}
-        onPriorities={() => setPrioritiesOpen((o) => !o)}
-        onRerun={() => plan && runPlan(plan.origin.id, plan.destination.id, true)}
-        onSave={save}
-        unsaved={unsaved}
-        onShare={share}
-        onExport={exportAs}
-        onStartOver={startOver}
-        saved={saved}
-        onLoad={loadScenario}
-        onCompareWith={(s) => {
-          setBaseline(s);
-          setTab("overview");
-        }}
-        onDelete={removeScenario}
-      />
-
-      <div className="live-bar" role="status" aria-live="polite">
-        {loading
-          ? `Generating alternatives and running simulations… ${elapsed} s${elapsed > 20 ? " (new corridors can take up to a minute)" : ""}`
-          : message}
-      </div>
-
-      {error && (
-        <div className="notice page-notice" role="alert">
-          {error}{" "}
-          {lastAttempt && (
-            <button className="link" onClick={() => runPlan(lastAttempt.o, lastAttempt.d, lastAttempt.fresh)} disabled={loading}>
-              Try again
-            </button>
-          )}
+        animate={animate}
+        replayKey={replayKey}
+        basemap={basemap}
+        layers={layers}
+        fit={fit}
+        onCityPick={onCityPick}
+        onCancelPick={() => setPickStep("off")}
+        onSelect={setSelected}
+        onFit={(kind) => setFit({ kind, n: Date.now() })}
+        onBasemap={setBasemap}
+        onLayers={setLayers}
+        onAnimate={setAnimate}
+        onReplay={() => setReplayKey((k) => k + 1)}
+      >
+        <div className="brand">
+          <span className="wordmark">RailPlanner</span>
+          <span className="tb-tag">Passenger rail corridor screening</span>
         </div>
-      )}
-
-      {plan && prioritiesOpen && (
-        <div className="drawer">
-          <PrioritiesPanel routes={plan.routes} weights={weights} onChange={setWeights} onClose={() => setPrioritiesOpen(false)} />
+        <CorridorControls {...toolbar} />
+        <div className="live-bar" role="status" aria-live="polite">
+          {loading
+            ? `Generating alternatives and running simulations… ${elapsed} s${elapsed > 20 ? " (new corridors can take up to a minute)" : ""}`
+            : message}
         </div>
-      )}
-
-      {!plan ? (
-        <main className="workspace empty">
+        {error && (
+          <div className="notice" role="alert">
+            {error}{" "}
+            {lastAttempt && (
+              <button className="link" onClick={() => runPlan(lastAttempt.o, lastAttempt.d, lastAttempt.fresh)} disabled={loading}>
+                Try again
+              </button>
+            )}
+          </div>
+        )}
+        {plan ? (
+          <HeroSummary
+            plan={plan}
+            weights={weights}
+            defaultWeights={weightsEqual(weights, DEFAULT_WEIGHTS)}
+            onOpenPriorities={openPriorities}
+            onOpenTab={openTab}
+          />
+        ) : (
           <section className="intro">
             <h1>Compare passenger rail corridor alternatives</h1>
             <p>
-              Choose an origin and a destination above, or pick two cities on the map. RailPlanner draws three
-              conceptual alignments, simulates their capital cost and time to opening, and screens federal funding fit.
+              Choose an origin and a destination, or pick two cities on the map. RailPlanner draws three conceptual
+              alignments, simulates their capital cost and time to opening, and screens federal funding fit.
             </p>
             <p className="fine">
-              It is a screening tool. Costs use illustrative, uncalibrated benchmarks, and train service, ridership and
+              A screening tool: costs use illustrative, uncalibrated benchmarks, and train service, ridership and
               operating costs are not modeled yet.
             </p>
-            {loading && <p role="status">Generating alternatives and running simulations…</p>}
           </section>
-          {mapPanel}
-        </main>
-      ) : (
-        <main className="workspace">
+        )}
+      </MapPanel>
+
+      {plan && (
+        <div className="actions-bar" id="workspace">
           <div className="tabs" role="tablist" aria-label="Analysis views" onKeyDown={onTabKey}>
             {TABS.map((t) => (
               <button
@@ -363,7 +371,18 @@ export default function App() {
               </button>
             ))}
           </div>
+          <ScenarioActions {...toolbar} />
+        </div>
+      )}
 
+      {plan && prioritiesOpen && (
+        <div className="drawer">
+          <PrioritiesPanel routes={plan.routes} weights={weights} onChange={setWeights} onClose={() => setPrioritiesOpen(false)} />
+        </div>
+      )}
+
+      {plan && (
+        <main className="workspace">
           <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
             {tab === "overview" && (
               <div className="tab-body">
@@ -372,13 +391,10 @@ export default function App() {
                     plan={plan}
                     weights={weights}
                     defaultWeights={weightsEqual(weights, DEFAULT_WEIGHTS)}
-                    onOpenPriorities={() => {
-                      setPrioritiesOpen(true);
-                      window.scrollTo({ top: 0 });
-                    }}
-                    onOpenTab={(t) => isTab(t) && setTab(t)}
+                    onOpenPriorities={openPriorities}
+                    onOpenTab={openTab}
                   />
-                  {mapPanel}
+                  <StationsList plan={plan} selected={selected} />
                 </div>
                 {baseline && (
                   <BaselinePanel baseline={baseline} plan={plan} weights={weights} selected={selected} onClose={() => setBaseline(null)} />

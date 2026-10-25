@@ -56,18 +56,18 @@ export default function DistributionChart({ title, dist, color, format, runs, th
       <div aria-hidden="true">
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data} margin={{ top: 22, right: 12, bottom: 0, left: 12 }} barCategoryGap="12%">
-            <CartesianGrid vertical={false} stroke="#e5e7eb" />
+            <CartesianGrid vertical={false} stroke="rgba(243, 231, 201, 0.12)" />
             <XAxis
               dataKey="key"
               tickFormatter={(k) => format(data[Number(k)]?.lo ?? 0)}
               interval={Math.max(0, Math.floor(data.length / 5) - 1)}
-              tick={{ fontSize: 12, fill: "#4b5563" }}
+              tick={{ fontSize: 12, fill: "#b3a283" }}
               tickLine={false}
-              axisLine={{ stroke: "#9ca3af" }}
+              axisLine={{ stroke: "rgba(243, 231, 201, 0.35)" }}
             />
             <YAxis hide />
             <Tooltip
-              cursor={{ fill: "rgba(17, 24, 39, 0.05)" }}
+              cursor={{ fill: "rgba(243, 231, 201, 0.06)" }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const d = payload[0].payload as Datum;
@@ -88,18 +88,18 @@ export default function DistributionChart({ title, dist, color, format, runs, th
               <ReferenceLine
                 key={m.p}
                 x={binOf(values[m.p])}
-                stroke="#111827"
+                stroke="#f3e7c9"
                 strokeDasharray={m.p === "P50" ? undefined : "4 3"}
                 strokeWidth={m.p === "P50" ? 2 : 1.25}
-                label={{ value: m.p, position: m.pos, fontSize: 12, fill: "#111827" }}
+                label={{ value: m.p, position: m.pos, fontSize: 12, fill: "#f3e7c9" }}
               />
             ))}
             {threshold !== undefined && (
               <ReferenceLine
                 x={binOf(threshold)}
-                stroke="#b91c1c"
+                stroke="#f08a7a"
                 strokeWidth={2}
-                label={{ value: thresholdLabel ?? "Limit", position: "insideBottomRight", fontSize: 12, fill: "#b91c1c" }}
+                label={{ value: thresholdLabel ?? "Limit", position: "insideBottomRight", fontSize: 12, fill: "#f08a7a" }}
               />
             )}
           </BarChart>
