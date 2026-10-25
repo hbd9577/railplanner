@@ -24,7 +24,7 @@ not modeled. Every figure carries a status label.
 
 | Step | What happens | Where |
 |---|---|---|
-| Choose a corridor | Type an origin and destination (17 cities from New York to Chicago), or pick two cities on the map | `frontend/src/components/Toolbar.tsx` |
+| Choose a corridor | Type an origin and destination (17 cities from New York to Chicago) in the map overlay, or pick two cities on the map | `frontend/src/components/Toolbar.tsx` |
 | Generate alternatives | Least-cost paths on a 1 km grid with three strategies: upgrade existing rail, a new direct alignment, and a route via intermediate cities within a 25% detour (or named corridor templates for long routes, e.g. the Lake Shore vs Pennsylvania routes for NYC–Chicago) | `backend/app/routing.py` |
 | Measure | Length, share on existing rail, new-track miles (and in mountainous terrain), stations in route order, residents near stations (10 km, counted once) and near the line (10 mi), flagged miles on new track, river crossings | `backend/app/scoring.py`, `frontend/src/metrics.ts` |
 | Service and demand | For an editable service plan (daily round trips, top speeds): running times over each alignment's track profile; door-to-door times against driving and flying; ridership by station pair from a gravity model fitted to FY2024 Amtrak ridership at 12 stations (leave-one-out error shown); fare revenue and operating cost from Amtrak's FY2024 route results; trainsets; CO2 and road deaths avoided; a benefit-cost ratio with USDOT 2026 values (7%, with 3.1% as a sensitivity); share of the route on freight-owned and single track. Uncertain inputs are sampled 2,000 times and reported as P10/P50/P90 | `backend/app/service.py`, `backend/data/service_parameters.json`, `backend/data/observed_rail.json`, `backend/scripts/calibrate_demand.py` |
@@ -35,28 +35,38 @@ not modeled. Every figure carries a status label.
 | Ask questions | Suggested questions are generated from the results with their premises checked. Answers are short by default (with optional detail), cite supporting measures, label anything outside the analysis and say when something is not modeled; same number check | `backend/app/proposal.py`, `frontend/src/summary.ts` |
 | Save, share, export | Scenarios save in the browser and can be compared side by side with the current one; Share copies a link with corridor, selection, tab and weights; Export produces a PDF (print) or HTML report and a CSV of every measure, range, station, priority and ranking; Start over resets everything | `frontend/src/scenario.ts` |
 | Sensitivity | For each priority, the weight range over which the current leader stays first, and who leads outside it | `frontend/src/scoring.ts` |
-| Watch it built (optional) | A p5.js canvas lays the selected corridor's track mile by mile; off by default | `frontend/src/components/P5Overlay.tsx` |
+| Watch it built | A p5.js canvas lays the selected corridor's track mile by mile with a running mile count; on by default, with **Replay build** in the legend and a switch under **Map layers**; with reduced motion the finished track is drawn | `frontend/src/components/P5Overlay.tsx` |
 
 ### The workspace
 
-A toolbar holds the corridor, **Compare routes**, priorities, assumptions and Save / Share / Export. Tabs:
-**Overview** (decision summary generated from the active scenario, map with legend and ordered stations,
-alternative cards with what each gains and gives up), **Service & demand** (the service plan, train times,
-ridership, finances and fleet for each alternative, station pairs against driving and flying, the
-ridership fit against Amtrak data, and what is still not modeled), **Comparison** (one grouped table with preferred direction,
-status, definitions on demand and differences from a chosen baseline), **Costs & schedule** (P10/P50/P90
-explained, histograms, budget and opening-date checks, what the estimates include and exclude),
-**Impacts**, **Funding**, **Proposal & questions** (suggested questions generated from the results), and
-**Methodology** (status labels; priorities with sensitivity; every measure's definition, units, source, data
-year, coverage, method, key assumptions, uncertainty and known limitations; model assumptions and sources).
+The page opens on a full-width satellite map in an espresso, tan and gold theme. A semi-transparent gradient
+overlay on the left holds the RailPlanner title, the From/To fields, **Compare routes** and **Pick on map**, and
+a compact decision summary: which alternative leads under the current model and priorities, its median cost and
+time to opening with ranges, two reasons, and the preliminary service estimate. A floating panel on the right
+shows the legend (each alternative keeps one color, number and line pattern: gold solid, tan dashed, caramel
+dotted), **Fit all / Fit selected / Replay build**, and the collapsible **Map layers** (satellite or plain
+basemap, existing rail, protected areas, terrain, labels, animation).
+
+A sticky bar under the map holds the tabs and the scenario actions (Priorities, Assumptions, Save, Saved,
+Share, Export, Start over). Tabs: **Overview** (the full decision summary with riders and subsidy, open
+questions and next step; stations in route order; alternative cards with what each gains and gives up),
+**Service & demand** (the service plan, train times, ridership, finances and fleet for each alternative,
+station pairs against driving and flying, the ridership fit against Amtrak data, and what is still not
+modeled), **Comparison** (one grouped table with preferred direction, status, definitions on demand and
+differences from a chosen baseline), **Costs & schedule** (P10/P50/P90 explained, histograms, budget and
+opening-date checks, benefits and costs over 30 years, what the estimates include and exclude), **Impacts**
+(track treatment, flagged areas, CO2 and road safety), **Funding**, **Proposal & questions** (suggested
+questions generated from the results), and **Methodology** (status labels; priorities with sensitivity; every
+measure's definition, units, source, data year, coverage, method, key assumptions, uncertainty and known
+limitations; every service-model input with its source; model assumptions and data sources).
 
 Status labels used throughout: Observed, User assumption, Modeled estimate, Preliminary screening indicator,
 Not modeled, Not available. A value that is missing is shown as Not available and excluded from rankings, so
 missing data can never make an alternative look better. There are no numerical confidence scores, because
 there is no defensible method to derive them from these inputs.
 
-On phones the corridor fields fold into a one-line bar once results are shown, the map has a list view, and
-the comparison table keeps its first column in view. Results, errors and loading time are announced to screen
+On phones the map stays at the top and the overlay and legend stack beneath it; the corridor fields fold into
+a one-line bar once results are shown, and the comparison table keeps its first column in view. Results, errors and loading time are announced to screen
 readers, and every failure keeps your inputs and offers a retry.
 
 ## Architecture
@@ -70,9 +80,10 @@ flowchart LR
   subgraph VM["Vultr VM (Docker Compose)"]
     Caddy["Caddy<br/>reverse proxy :80/:443"]
     Web["frontend<br/>nginx static build"]
-    API["api<br/>FastAPI + uvicorn"]
+    API["api<br/>FastAPI + uvicorn<br/>routing · cost simulation ·<br/>service and demand model"]
     Grid[("grid.npz<br/>1 km raster stack<br/>rail, population, slope,<br/>water, PAD-US, floodplain")]
     Cache[("demo_cache/*.json<br/>plans + proposals")]
+    Params[("service_parameters.json<br/>observed_rail.json<br/>demand_calibration.json")]
   end
 
   subgraph Tiger["Tiger Data (Postgres + TimescaleDB + PostGIS)"]
@@ -88,6 +99,7 @@ flowchart LR
   UI -- "/api/*" --> Caddy --> API
   UI -. map tiles .-> Tiles
   API --> Grid
+  API --> Params
   API -- "routes, matches, proposals" --> Tables
   API -- "COPY 5,000 runs per route" --> Hyper --> Cagg
   Cagg -- "summaries" --> API
@@ -103,6 +115,10 @@ flowchart LR
 3. Otherwise compute: routes → scores → Monte Carlo (written to the hypertable) → summaries read back from the
    continuous aggregate → funding matches, all persisted. If Tiger fails mid-way, summaries are computed in
    process with identical binning, so the response shape never changes.
+4. Service, demand and benefit-cost estimates are attached to every plan, stored or new, for the default
+   service plan. `POST /service` re-runs them for another plan (daily round trips, top speeds) without
+   changing alignments or capital cost; `GET /service-parameters` returns every input with its source and the
+   demand calibration.
 
 ### Guardrails on the language model
 
@@ -127,7 +143,13 @@ to Chicago.
 | Protected areas, wildlife refuges | USGS PAD-US 3.0, GAP status 1–2, ≥1,000 acres | real |
 | Floodplain | River corridors + hand-digitized NY river outlines | approximate proxy |
 | Cost benchmarks | `backend/data/cost_benchmarks.csv` | illustrative placeholders |
-| Funding programs | `backend/data/funding_programs.json` | approximate |
+| Funding programs | `backend/data/funding_programs.json`, checked against FRA and USDOT program pages | verified 2026-10-24 (RRIF, Corridor ID partly) |
+| Station ridership, schedules | Amtrak FY2024 state fact sheets; Empire Service, Keystone/Pennsylvanian and Lake Shore Limited timetables (`backend/data/observed_rail.json`) | real (FY2024) |
+| Fares and operating cost | Amtrak Monthly Performance Report, September 2024 (FY2024 route ticket revenue, operating expense, passenger-miles, train-miles) | real, derived ratios |
+| Trainset cost | Amtrak's 2021 Siemens order ($3.4B for up to 83 trainsets; $7.3B program) | real, derived range |
+| Benefit-cost values | USDOT Benefit-Cost Analysis Guidance, 2026 update (time, vehicle cost, occupancy, fatal crash, 7% discount) | real |
+| Emissions and safety | EPA (car and diesel CO2), ORNL Transportation Energy Data Book (Amtrak energy), EIA (diesel heat content), NHTSA 2023 (fatality rate) | real |
+| Service assumptions | Speeds, access time, frequency elasticity and others in `backend/data/service_parameters.json` | assumptions, with ranges |
 
 ## Setup
 
@@ -174,13 +196,15 @@ pip install -r requirements-data.txt
 python -m scripts.prepare_data                       # rebuild grid.npz from the public sources
 python -m scripts.precompute_demo                    # recompute the 4 demo corridors into Tiger + JSON cache
 python -m scripts.precompute_demo --proposals-only   # draft and cache Gemini proposals for them
+python -m scripts.calibrate_demand                   # refit the ridership model to observed_rail.json
 python -m scripts.plot_routes "New York City" Chicago   # route map to docs/img/
 ```
 
 ### Tests
 
 ```bash
-cd backend && python -m pytest -q     # 35 tests; the DB round trip is skipped without DATABASE_URL, Gemini is mocked
+cd backend && python -m pytest -q     # 46 tests; Gemini is mocked. Tests that use Tiger Data or the demo
+                                      # cache need the database reachable and current demo caches
 ```
 
 ## Deployment (Vultr, Docker Compose)
@@ -197,41 +221,58 @@ is published by default: on a bare IP an open-but-certificate-less 443 makes Chr
 fail. Set `SITE_ADDRESS` to a domain that points at the VM and `deploy.sh` adds `docker-compose.https.yml`
 (port 443), and Caddy obtains the certificate automatically.
 
+Deploying needs outbound SSH (port 22), and Tiger Data uses a non-standard port; some networks block both.
+After a release that changes `MODEL_VERSION`, rebuild the demo caches and run the full tests on the server,
+where the database is reachable, in a throwaway container from the API image:
+
+```bash
+ssh root@HOST 'cd /opt/railplanner/app && docker run --rm --env-file .env -v "$PWD/backend:/srv" -w /srv app-api \
+  sh -c "pip install -q pytest httpx && python -m scripts.precompute_demo && python -m pytest -q"'
+scp 'root@HOST:/opt/railplanner/app/backend/data/demo_cache/*.json' backend/data/demo_cache/   # then commit
+```
+
 ## Demo script (about 3 minutes)
 
 1. **Open** http://45.77.76.26. "RailPlanner helps a state DOT compare passenger rail alternatives before
    spending money on a study."
 2. **Type New York City → Chicago** and click **Compare routes**. Read the Overview: which alternative leads
    under the current model and priorities, its median cost and opening time with ranges, why it leads, the
-   main tradeoff, and the "Service not yet modeled" callout.
+   main tradeoff, and the preliminary riders and operating subsidy, while the track is laid mile by mile.
 3. **Click another alternative** on the map or in the legend. Selection follows across every tab; "Leads" and
    "Selected" are marked separately.
-4. **Priorities.** Move "Residents near stations" up: the ranking and summary update and the panel explains
-   why the leader changed.
-5. **Comparison.** "One table, grouped by what each measure tells you, with the preferred direction and how
+4. **Service & demand.** Change trains per day or top speed: ridership, operating cost, subsidy, fleet and
+   the benefit-cost ratio re-run, and the fit table shows how the ridership model compares with Amtrak's
+   FY2024 station ridership.
+5. **Priorities.** Move "More riders" or "Lower operating subsidy": the ranking and summary update and the
+   panel explains why the leader changed.
+6. **Comparison.** "One table, grouped by what each measure tells you, with the preferred direction and how
    each figure was produced. Rows we can't estimate yet say so."
-6. **Costs & schedule.** "Each alternative is 5,000 Monte Carlo runs stored in a Tiger Data hypertable; the
+7. **Costs & schedule.** "Each alternative is 5,000 Monte Carlo runs stored in a Tiger Data hypertable; the
    P10/P50/P90 ranges and histograms come from a TimescaleDB continuous aggregate." Enter a budget to see
-   the share of runs above it.
-7. **Funding**, then **Proposal & questions**: generate the draft (number check passes) and click a
+   the share of runs above it, then the 30-year benefits and costs.
+8. **Funding**, then **Proposal & questions**: generate the draft (number check passes) and click a
    suggested question.
-8. **Share** or **Export report** to hand the scenario, with its weights, to someone else.
-9. **Close:** "Every figure here is illustrative, and the tool says so. The point is a fast, honest
+9. **Share** or **Export report** to hand the scenario, with its weights, to someone else.
+10. **Close:** "Every figure here is illustrative, and the tool says so. The point is a fast, honest
    comparison before a $500K Corridor ID study, not a replacement for it."
 
 **Backup path:** the demo corridors and their proposals are cached in Tiger and in `backend/data/demo_cache/`,
-so steps 2–7 need no live computation or Gemini call. Q&A is the only step that needs Gemini live; if it is
+so steps 2–8 need no live computation or Gemini call. Q&A is the only step that needs Gemini live; if it is
 busy, the panel says so.
 
 ## Screenshots
 
-New York → Chicago on the live deployment (1440 px wide; captured with headless Edge).
+New York → Chicago at 1440 px wide, captured with headless Edge.
 
-**Overview:** the decision summary generated from the active scenario (leader under the current model and
-priorities, median cost and opening time with ranges, reasons, tradeoff, what is not modeled, next step),
-the map with legend and stations in route order, and what each alternative gains and gives up.
+**Map and overlay:** the full-width map with the corridor controls and compact decision summary on the
+gradient overlay, and the legend and map controls at the right.
 
-![Overview](docs/img/screenshot-overview.jpg)
+![Map and overlay](docs/img/screenshot-overview.jpg)
+
+**Service & demand:** the service plan, each alternative's train time, riders, operating cost, revenue,
+subsidy and fleet with ranges, and the busiest station pairs against driving and flying.
+
+![Service and demand](docs/img/screenshot-service.jpg)
 
 **Comparison:** one grouped table with preferred direction, how each figure was produced, differences from a
 chosen baseline, and rows for decision-critical measures that are not modeled yet.
@@ -239,13 +280,10 @@ chosen baseline, and rows for decision-critical measures that are not modeled ye
 ![Comparison](docs/img/screenshot-comparison.jpg)
 
 **Costs & schedule:** P10/P50/P90 explained, ranges for all three alternatives, the 5,000-run histograms
-from the TimescaleDB continuous aggregate, budget and opening-date checks, and what the estimates include.
+from the TimescaleDB continuous aggregate, budget and opening-date checks, benefits and costs over 30 years,
+and what the estimates include.
 
 ![Costs and schedule](docs/img/screenshot-costs.jpg)
-
-**Methodology:** status labels, adjustable priorities with the live ranking, and the metric registry.
-
-![Methodology](docs/img/screenshot-methodology.jpg)
 
 Route maps generated by `scripts/plot_routes.py` (hillshade, existing rail, protected areas, candidates):
 
@@ -280,8 +318,10 @@ Route maps generated by `scripts/plot_routes.py` (hillshade, existing rail, prot
   other long pairs fall back to free-form routing.
 - Funding program facts were verified against FRA and USDOT pages on 2026-10-24 (RRIF and Corridor ID only
   partly); they change every funding round. Fit scores are fixed rules, not probabilities of award.
-- Not built yet: required stops, editable stations, frequency and fare scenarios (these need backend routing
-  changes and an operations model). Assumption inputs (cost benchmarks, durations) are not editable in the UI.
+- Not built yet: required stops and editable stations (these need backend routing changes), fare scenarios,
+  and editing cost benchmarks or schedule durations in the UI. The service plan (trains per day, top speeds)
+  is editable; faster speeds do not add the signal, track or electrification work they would need to the
+  capital cost.
 - The study region is NYC/Philadelphia to Chicago; cities outside it are not routable.
 
 ## Roadmap
@@ -290,13 +330,12 @@ Route maps generated by `scripts/plot_routes.py` (hillshade, existing rail, prot
   database, by terrain, density and treatment.
 - **Permitting module:** NEPA pathway prediction (CE / EA / EIS) from FEMA NFHL floodplains, NWI wetlands and
   Section 4(f) properties, with schedule risk per pathway.
-- **Operations simulation:** timetables, running times by alignment and speed class, ridership and farebox
-  estimates feeding back into funding (RRIF repayment capacity).
+- **Operations simulation:** timetables and stopping patterns, train performance by speed class, freight
+  traffic, reliability and line capacity, replacing the screening indicators.
+- **Better demand data:** station-pair ridership or mobile-device trip data, fares and a calibrated
+  mode-choice model with air and bus, to narrow the ridership ranges.
 - **Supply chain:** rail, ties and structural steel lead times and price indices as schedule and cost drivers.
-- **Service and demand first:** journey time and door-to-door competitiveness, frequency and span, station-pair
-  demand, operating cost and revenue, and capacity on host railroads; these are what decide whether the
-  service is useful, and the ranking should use them once modeled.
-- **Editable scenarios:** required stops, station choices and user-set cost and schedule inputs.
+- **Editable scenarios:** required stops, station choices, fares and user-set cost and schedule inputs.
 - **Voice narration (Phase 8):** ElevenLabs reading the executive summary and Q&A answers, cached by text hash.
 - **HTTPS and a domain** for the deployment.
 - **More regions:** extend the grid nationally and add templates for other long corridors.
