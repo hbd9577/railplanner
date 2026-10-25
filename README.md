@@ -28,10 +28,11 @@ estimate, rule-based, or not modeled.
 | Measure | Length, share on existing rail, new-track miles (and in mountainous terrain), stations in route order, residents near stations (10 km, counted once) and near the line (10 mi), flagged miles on new track, river crossings | `backend/app/scoring.py`, `frontend/src/metrics.ts` |
 | Rank | Adjustable weights on cost, delivery, residents near stations, new track in flagged areas and new right-of-way; the ranking, its explanation and the decision summary update live and travel with saved, shared and exported scenarios | `frontend/src/scoring.ts`, `frontend/src/summary.ts` |
 | Simulate | 5,000 PERT/triangular Monte Carlo runs of capital cost and time to opening per alternative, bulk-loaded into a TimescaleDB hypertable; P10/P50/P90 and histograms are read back from a continuous aggregate | `backend/app/simulation.py`, `backend/sql/schema.sql` |
-| Match funding | Rule-based fit against six federal programs (FSP-National, FSP-NEC, CRISI, BUILD, RRIF, Corridor ID) with federal/non-federal split at the median cost | `backend/app/funding.py` |
-| Draft a proposal | Gemini writes the six required sections from a payload of pre-formatted figures; a number check rejects any figure not in the payload, retries once, then falls back to a template draft | `backend/app/proposal.py` |
-| Ask questions | Gemini answers questions about the results under the same number check | `backend/app/proposal.py` |
-| Save, share, export | Scenarios save in the browser; Share copies a link with corridor, selection, tab and weights; Export downloads a self-contained HTML report | `frontend/src/scenario.ts` |
+| Funding guide | Rule-based screening and qualitative fit against six federal programs (FSP-National, FSP-NEC, CRISI, BUILD, RRIF, Corridor ID). Each program lists applicants, stage, match, limits, round status, official source, verification date and a next step; assumed award sizes are labeled as RailPlanner assumptions and amounts are never summed | `backend/app/funding.py`, `backend/data/funding_programs.json` |
+| Draft a proposal | Gemini writes the sections (service assumptions, alternatives and tradeoffs, a recommendation conditional on the active priorities, uncertainty, funding, risks and gaps, next steps) from a payload of pre-formatted figures; a number check rejects any figure not in the payload, retries once, then falls back to a template draft. A scenario record and source list are appended by code. Drafts can be edited, then downloaded as Markdown or saved as PDF | `backend/app/proposal.py` |
+| Ask questions | Suggested questions are generated from the results with their premises checked. Answers are short by default (with optional detail), cite supporting measures, label anything outside the analysis and say when something is not modeled; same number check | `backend/app/proposal.py`, `frontend/src/summary.ts` |
+| Save, share, export | Scenarios save in the browser and can be compared side by side with the current one; Share copies a link with corridor, selection, tab and weights; Export produces a PDF (print) or HTML report and a CSV of every measure, range, station, priority and ranking; Start over resets everything | `frontend/src/scenario.ts` |
+| Sensitivity | For each priority, the weight range over which the current leader stays first, and who leads outside it | `frontend/src/scoring.ts` |
 | Watch it built (optional) | A p5.js canvas lays the selected corridor's track mile by mile; off by default | `frontend/src/components/P5Overlay.tsx` |
 
 ### The workspace
@@ -43,7 +44,17 @@ matters; population vs access vs ridership), **Comparison** (one grouped table w
 status, definitions on demand and differences from a chosen baseline), **Costs & schedule** (P10/P50/P90
 explained, histograms, budget and opening-date checks, what the estimates include and exclude),
 **Impacts**, **Funding**, **Proposal & questions** (suggested questions generated from the results), and
-**Methodology** (metric registry with source, year, coverage and method; scoring; assumptions).
+**Methodology** (status labels; priorities with sensitivity; every measure's definition, units, source, data
+year, coverage, method, key assumptions, uncertainty and known limitations; model assumptions and sources).
+
+Status labels used throughout: Observed, User assumption, Modeled estimate, Preliminary screening indicator,
+Not modeled, Not available. A value that is missing is shown as Not available and excluded from rankings, so
+missing data can never make an alternative look better. There are no numerical confidence scores, because
+there is no defensible method to derive them from these inputs.
+
+On phones the corridor fields fold into a one-line bar once results are shown, the map has a list view, and
+the comparison table keeps its first column in view. Results, errors and loading time are announced to screen
+readers, and every failure keeps your inputs and offers a retry.
 
 ## Architecture
 
@@ -261,7 +272,10 @@ Route maps generated by `scripts/plot_routes.py` (hillshade, existing rail, prot
 - Floodplain flags are a proxy (river corridors), not FEMA flood maps.
 - Long corridors use named templates (e.g. NYC–Chicago) because free-form routing over ~800 miles drifts;
   other long pairs fall back to free-form routing.
-- Funding program parameters are approximate and change every funding round.
+- Funding program facts were verified against FRA and USDOT pages on 2026-10-24 (RRIF and Corridor ID only
+  partly); they change every funding round. Fit scores are fixed rules, not probabilities of award.
+- Not built yet: required stops, editable stations, frequency and fare scenarios (these need backend routing
+  changes and an operations model). Assumption inputs (cost benchmarks, durations) are not editable in the UI.
 - The study region is NYC/Philadelphia to Chicago; cities outside it are not routable.
 
 ## Roadmap
@@ -273,6 +287,10 @@ Route maps generated by `scripts/plot_routes.py` (hillshade, existing rail, prot
 - **Operations simulation:** timetables, running times by alignment and speed class, ridership and farebox
   estimates feeding back into funding (RRIF repayment capacity).
 - **Supply chain:** rail, ties and structural steel lead times and price indices as schedule and cost drivers.
+- **Service and demand first:** journey time and door-to-door competitiveness, frequency and span, station-pair
+  demand, operating cost and revenue, and capacity on host railroads; these are what decide whether the
+  service is useful, and the ranking should use them once modeled.
+- **Editable scenarios:** required stops, station choices and user-set cost and schedule inputs.
 - **Voice narration (Phase 8):** ElevenLabs reading the executive summary and Q&A answers, cached by text hash.
 - **HTTPS and a domain** for the deployment.
 - **More regions:** extend the grid nationally and add templates for other long corridors.
