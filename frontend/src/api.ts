@@ -34,7 +34,16 @@ export interface RouteStats {
   env_flags: Record<string, number>;
   river_crossings: number;
   river_crossings_new: number;
-  stations: string[];
+  stations: string[]; // ordered along the route, origin first
+  station_miles: { name: string; mile: number }[];
+  pop_near_stations: number;
+  station_catchment_km: number;
+  miles_new: number;
+  miles_upgrade: number;
+  miles_reactivation: number;
+  miles_new_mountainous: number;
+  env_miles: Record<string, number>;
+  env_miles_new: number;
   segments: SegmentMiles[];
   score: number;
   score_breakdown: { components: Record<string, number>; weights: Record<string, number> };
@@ -104,6 +113,7 @@ export interface PlanResult {
   data_sources: Record<string, { source: string; flag: string }>;
   created_at: string;
   cached: boolean;
+  model_version: string;
 }
 
 export interface NumberCheck {

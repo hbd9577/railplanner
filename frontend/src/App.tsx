@@ -1,347 +1,336 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type City, type PlanResult } from "./api";
-import Comparison from "./components/Comparison";
-import DistributionChart from "./components/DistributionChart";
-import FundingPanel from "./components/FundingPanel";
-import MapView from "./components/MapView";
+import AltCards from "./components/AltCards";
+import ComparisonTab from "./components/ComparisonTab";
+import CostsTab from "./components/CostsTab";
+import DecisionSummary from "./components/DecisionSummary";
+import FundingTab from "./components/FundingTab";
+import ImpactsTab from "./components/ImpactsTab";
+import MapPanel from "./components/MapPanel";
+import type { Basemap, FitRequest, Layers } from "./components/MapView";
+import MethodologyTab from "./components/MethodologyTab";
+import PrioritiesPanel from "./components/PrioritiesPanel";
 import ProposalPanel from "./components/ProposalPanel";
-import RangeCompare from "./components/RangeCompare";
-import RouteCards from "./components/RouteCards";
-import Summary from "./components/Summary";
-import { PALETTE, badgeStyle, months, usd, years } from "./format";
+import ServiceTab from "./components/ServiceTab";
+import Toolbar from "./components/Toolbar";
+import { DEFAULT_WEIGHTS, rank, weightsEqual, type Weights } from "./scoring";
+import { download, loadScenarios, queryFor, readUrl, reportHtml, storeScenarios, type Scenario } from "./scenario";
+import { suggestedQuestions } from "./summary";
 
-function coord(lat: number, lon: number): string {
-  return `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? "N" : "S"} ${Math.abs(lon).toFixed(4)}°${lon >= 0 ? "E" : "W"}`;
-}
-
-function Num({ i, rank, selected }: { i: number; rank: number; selected: number }) {
-  return (
-    <span className="num" style={badgeStyle(i, selected)}>
-      {rank}
-    </span>
-  );
-}
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "service", label: "Service & demand" },
+  { id: "comparison", label: "Comparison" },
+  { id: "costs", label: "Costs & schedule" },
+  { id: "impacts", label: "Impacts" },
+  { id: "funding", label: "Funding" },
+  { id: "proposal", label: "Proposal & questions" },
+  { id: "methodology", label: "Methodology" },
+] as const;
+type TabId = (typeof TABS)[number]["id"];
+const isTab = (t: string | null): t is TabId => TABS.some((x) => x.id === t);
 
 export default function App() {
+  const initial = useRef(readUrl());
   const [cities, setCities] = useState<City[]>([]);
-  const [originId, setOriginId] = useState<number | null>(null);
-  const [destId, setDestId] = useState<number | null>(null);
+  const [originId, setOriginId] = useState<number | null>(initial.current.from);
+  const [destId, setDestId] = useState<number | null>(initial.current.to);
   const [plan, setPlan] = useState<PlanResult | null>(null);
   const [selected, setSelected] = useState(0);
-  const [loading, setLoading] = useState<"plan" | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [animate, setAnimate] = useState(true);
+  const [tab, setTab] = useState<TabId>(isTab(initial.current.tab) ? initial.current.tab : "overview");
+  const [weights, setWeights] = useState<Weights>(initial.current.w ?? { ...DEFAULT_WEIGHTS });
+  const [prioritiesOpen, setPrioritiesOpen] = useState(false);
+  const [pickStep, setPickStep] = useState<"off" | "origin" | "dest">("off");
+  const [animate, setAnimate] = useState(false);
   const [replayKey, setReplayKey] = useState(0);
+  const [basemap, setBasemap] = useState<Basemap>("light");
+  const [layers, setLayers] = useState<Layers>({ rail: false, protected: false, terrain: false, labels: true });
+  const [fit, setFit] = useState<FitRequest>({ kind: "all", n: 0 });
+  const [saved, setSaved] = useState<Scenario[]>(() => loadScenarios());
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     api
       .cities()
       .then((cs) => {
         setCities(cs);
-        // A shared link (?from=ID&to=ID) reopens that corridor's results; otherwise start empty.
-        const q = new URLSearchParams(window.location.search);
-        const o = Number(q.get("from"));
-        const d = Number(q.get("to"));
-        if (o !== d && cs.some((c) => c.id === o) && cs.some((c) => c.id === d)) runPlan(o, d);
+        const { from, to, sel } = initial.current;
+        if (from != null && to != null && from !== to && cs.some((c) => c.id === from) && cs.some((c) => c.id === to))
+          runPlan(from, to, false, sel);
       })
       .catch((e) => setError(`Could not reach the API (${e.message}).`));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function runPlan(o: number, d: number, fresh = false) {
+  // Keep the address bar in step with the scenario so Share and reload reproduce it.
+  useEffect(() => {
+    if (!plan) return;
+    const q = queryFor({ from: plan.origin.id, to: plan.destination.id, sel: plan.routes[selected]?.key, tab, w: weightsEqual(weights, DEFAULT_WEIGHTS) ? undefined : weights });
+    window.history.replaceState(null, "", q);
+  }, [plan, selected, tab, weights]);
+
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 4000);
+    return () => clearTimeout(t);
+  }, [message]);
+
+  async function runPlan(o: number, d: number, fresh = false, selKey?: string | null) {
+    const keepKey = selKey ?? (plan && plan.origin.id === o && plan.destination.id === d ? plan.routes[selected]?.key : null);
     setOriginId(o);
     setDestId(d);
-    setLoading("plan");
+    setLoading(true);
     setError(null);
     try {
       const p = await api.plan(o, d, fresh);
+      const idx = keepKey ? p.routes.findIndex((r) => r.key === keepKey) : -1;
       setPlan(p);
-      setSelected(0);
-      window.history.replaceState(null, "", `?from=${o}&to=${d}`);
+      setSelected(idx >= 0 ? idx : 0);
+      setFit({ kind: "all", n: Date.now() });
+      if (fresh) setMessage("Routing and simulations rerun from scratch.");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Planning failed");
     } finally {
-      setLoading(null);
+      setLoading(false);
     }
   }
 
-  function onCityClick(id: number) {
-    if (originId == null || destId != null) {
+  function onCityPick(id: number) {
+    if (pickStep === "origin") {
       setOriginId(id);
-      setDestId(null);
-    } else if (id !== originId) {
+      if (destId === id) setDestId(null);
+      setPickStep("dest");
+    } else if (pickStep === "dest" && id !== originId) {
       setDestId(id);
+      setPickStep("off");
+      if (originId != null) runPlan(originId, id);
     }
   }
 
-  const route = plan?.routes[selected];
-  const sorted = useMemo(() => [...cities].sort((a, b) => a.name.localeCompare(b.name)), [cities]);
-  const canPlan = originId != null && destId != null && originId !== destId && loading == null;
-  const planMatches = plan && plan.origin.id === originId && plan.destination.id === destId;
+  const leader = useMemo(() => (plan ? rank(plan.routes, weights)[0].index : null), [plan, weights]);
+  const canCompare = originId != null && destId != null && originId !== destId;
+  const upToDate = !!plan && plan.origin.id === originId && plan.destination.id === destId;
+  const corridorName = plan ? `${plan.origin.name}–${plan.destination.name}` : "";
+
+  function save() {
+    if (!plan) return;
+    const s: Scenario = {
+      name: `${corridorName}, ${plan.routes[selected].label}${weightsEqual(weights, DEFAULT_WEIGHTS) ? "" : ", custom priorities"}`,
+      from: plan.origin.id,
+      to: plan.destination.id,
+      sel: plan.routes[selected].key,
+      w: weights,
+      savedAt: new Date().toISOString(),
+    };
+    const next = [s, ...saved];
+    setSaved(next);
+    setMessage(storeScenarios(next) ? "Scenario saved in this browser." : "Could not save: browser storage is unavailable.");
+  }
+
+  function loadScenario(s: Scenario) {
+    setWeights({ ...DEFAULT_WEIGHTS, ...s.w });
+    runPlan(s.from, s.to, false, s.sel);
+  }
+
+  function removeScenario(s: Scenario) {
+    const next = saved.filter((x) => x.savedAt !== s.savedAt);
+    setSaved(next);
+    storeScenarios(next);
+  }
+
+  async function share() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setMessage("Link copied. It reopens this corridor, selection, tab and priorities.");
+    } catch {
+      setMessage(`Copy this link: ${window.location.href}`);
+    }
+  }
+
+  function exportReport() {
+    if (!plan) return;
+    const slug = `${plan.origin.name}-${plan.destination.name}`.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    download(`railplanner-${slug}.html`, reportHtml(plan, weights, selected, window.location.href));
+    setMessage("Report downloaded as an HTML file.");
+  }
+
+  function onTabKey(e: React.KeyboardEvent) {
+    const i = TABS.findIndex((t) => t.id === tab);
+    const n = e.key === "ArrowRight" ? i + 1 : e.key === "ArrowLeft" ? i - 1 : null;
+    if (n == null) return;
+    e.preventDefault();
+    const next = TABS[(n + TABS.length) % TABS.length].id;
+    setTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  }
+
+  const mapPanel = (
+    <MapPanel
+      cities={cities}
+      plan={plan}
+      originId={originId}
+      destId={destId}
+      selected={selected}
+      leader={leader}
+      pickStep={pickStep}
+      loading={loading}
+      animate={animate}
+      replayKey={replayKey}
+      basemap={basemap}
+      layers={layers}
+      fit={fit}
+      onCityPick={onCityPick}
+      onCancelPick={() => setPickStep("off")}
+      onSelect={setSelected}
+      onFit={(kind) => setFit({ kind, n: Date.now() })}
+      onBasemap={setBasemap}
+      onLayers={setLayers}
+      onAnimate={setAnimate}
+      onReplay={() => setReplayKey((k) => k + 1)}
+    />
+  );
 
   return (
     <div className="page">
-      <header className="masthead">
-        <div className="masthead-inner">
-          <div>
-            <h1 className="wordmark">
-              Rail<b>Planner</b>
-            </h1>
-            <div className="dek">Corridor alternatives, cost and schedule ranges, and federal funding fit</div>
-          </div>
-          {plan && route && (
-            <div className="provenance">
-              <span>
-                {route.simulation.source === "tiger_cagg" ? "Results from Tiger Data" : "Results computed locally"}
-                {" · "}
-                {route.simulation.runs.toLocaleString()} simulations per alternative
-              </span>
-              <span className="coords">
-                {coord(plan.origin.lat, plan.origin.lon)} → {coord(plan.destination.lat, plan.destination.lon)}
-              </span>
-            </div>
-          )}
+      <Toolbar
+        cities={cities}
+        originId={originId}
+        destId={destId}
+        onOrigin={setOriginId}
+        onDest={setDestId}
+        onSwap={() => {
+          setOriginId(destId);
+          setDestId(originId);
+        }}
+        onCompare={() => canCompare && runPlan(originId!, destId!)}
+        canCompare={canCompare}
+        loading={loading}
+        upToDate={upToDate}
+        picking={pickStep !== "off"}
+        onPick={() => {
+          setPickStep(pickStep === "off" ? "origin" : "off");
+          setTab("overview");
+        }}
+        hasPlan={!!plan}
+        prioritiesOpen={prioritiesOpen}
+        customWeights={!weightsEqual(weights, DEFAULT_WEIGHTS)}
+        onPriorities={() => setPrioritiesOpen((o) => !o)}
+        onRerun={() => plan && runPlan(plan.origin.id, plan.destination.id, true)}
+        onSave={save}
+        onShare={share}
+        onExport={exportReport}
+        saved={saved}
+        onLoad={loadScenario}
+        onDelete={removeScenario}
+        message={message}
+      />
+
+      {error && (
+        <div className="notice page-notice" role="alert">
+          {error}
         </div>
-      </header>
+      )}
 
-      {/* Full-width map hero; controls float over its left edge on a semi-transparent gradient. */}
-      <section className="hero" aria-label="Corridor map">
-        <div className="hero-map">
-          <MapView
-            cities={cities}
-            plan={plan}
-            originId={originId}
-            destId={destId}
-            selected={selected}
-            animate={animate}
-            replayKey={replayKey}
-            onCityClick={onCityClick}
-            onRouteClick={setSelected}
-          />
-          {loading && <div className="map-loading">Generating routes and running simulations…</div>}
+      {plan && prioritiesOpen && (
+        <div className="drawer">
+          <PrioritiesPanel routes={plan.routes} weights={weights} onChange={setWeights} onClose={() => setPrioritiesOpen(false)} />
         </div>
+      )}
 
-        <div className="hero-overlay">
-          <div className="hero-panel">
-            <div className="ov-block">
-              <h2>Corridor</h2>
-              <p className="ov-note">Choose an origin and a destination, or pick two cities on the map.</p>
-              <div className="selects">
-                <label>
-                  From
-                  <select value={originId ?? ""} onChange={(e) => setOriginId(Number(e.target.value) || null)}>
-                    <option value="">Choose a city</option>
-                    {sorted.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}, {c.state}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  To
-                  <select value={destId ?? ""} onChange={(e) => setDestId(Number(e.target.value) || null)}>
-                    <option value="">Choose a city</option>
-                    {sorted.map((c) => (
-                      <option key={c.id} value={c.id} disabled={c.id === originId}>
-                        {c.name}, {c.state}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-              <div className="row">
-                <button className="primary" disabled={!canPlan} onClick={() => runPlan(originId!, destId!)}>
-                  {loading === "plan" ? "Planning…" : "Plan corridor"}
-                </button>
-                {planMatches && (
-                  <button
-                    className="ghost"
-                    disabled={loading != null}
-                    onClick={() => runPlan(originId!, destId!, true)}
-                    title="Recompute routes and all simulations"
-                  >
-                    Recompute
-                  </button>
-                )}
-              </div>
-              {error && (
-                <div className="notice" role="alert">
-                  {error}
-                </div>
-              )}
-            </div>
-
-            {plan && (
-              <div className="ov-block">
-                <h2>Routes</h2>
-                <div className="ov-routes">
-                  {plan.routes.map((r, i) => (
-                    <button key={r.key} className={i === selected ? "on" : ""} onClick={() => setSelected(i)}>
-                      <span className="num" style={badgeStyle(i, selected)}>
-                        {r.rank}
-                      </span>
-                      <span>{r.label}</span>
-                      <span className="mi">{r.stats.length_miles.toFixed(0)} mi</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="anim-row">
-                  <label className="anim-toggle">
-                    <input type="checkbox" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
-                    Animate construction
-                  </label>
-                  {animate && (
-                    <button className="link" onClick={() => setReplayKey((k) => k + 1)}>
-                      Replay build
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {plan && (
-              <div className="ov-block">
-                <h2>Summary</h2>
-                <Summary plan={plan} selected={selected} onSelect={setSelected} />
-              </div>
-            )}
-
-            <p className="caveat">
-              <strong>Illustrative estimates.</strong> Cost benchmarks are not calibrated. Ranges express modeled
-              uncertainty, not a budget or an engineering estimate.
+      {!plan ? (
+        <main className="workspace empty">
+          <section className="intro">
+            <h1>Compare passenger rail corridor alternatives</h1>
+            <p>
+              Choose an origin and a destination above, or pick two cities on the map. RailPlanner draws three
+              conceptual alignments, simulates their capital cost and time to opening, and screens federal funding fit.
             </p>
+            <p className="fine">
+              It is a screening tool. Costs use illustrative, uncalibrated benchmarks, and train service, ridership and
+              operating costs are not modeled yet.
+            </p>
+            {loading && <p role="status">Generating alternatives and running simulations…</p>}
+          </section>
+          {mapPanel}
+        </main>
+      ) : (
+        <main className="workspace">
+          <div className="tabs" role="tablist" aria-label="Analysis views" onKeyDown={onTabKey}>
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                id={`tab-${t.id}`}
+                role="tab"
+                aria-selected={tab === t.id}
+                aria-controls={`panel-${t.id}`}
+                tabIndex={tab === t.id ? 0 : -1}
+                className={tab === t.id ? "on" : ""}
+                onClick={() => setTab(t.id)}
+              >
+                {t.label}
+              </button>
+            ))}
           </div>
-        </div>
-      </section>
 
-      <main className="app">
-        {plan && route && (
-          <>
-            <section className="sect">
-              <h2>Alternatives</h2>
-              <RouteCards routes={plan.routes} selected={selected} onSelect={setSelected} />
-            </section>
+          <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`}>
+            {tab === "overview" && (
+              <div className="tab-body">
+                <div className="overview-grid">
+                  <DecisionSummary
+                    plan={plan}
+                    weights={weights}
+                    defaultWeights={weightsEqual(weights, DEFAULT_WEIGHTS)}
+                    onOpenPriorities={() => {
+                      setPrioritiesOpen(true);
+                      window.scrollTo({ top: 0 });
+                    }}
+                    onOpenTab={(t) => isTab(t) && setTab(t)}
+                  />
+                  {mapPanel}
+                </div>
+                <h2 className="section-h">The alternatives</h2>
+                <AltCards routes={plan.routes} selected={selected} leader={leader ?? 0} onSelect={setSelected} />
+              </div>
+            )}
+            {tab === "service" && <ServiceTab plan={plan} selected={selected} onSelect={setSelected} />}
+            {tab === "comparison" && (
+              <ComparisonTab routes={plan.routes} selected={selected} leader={leader ?? 0} onSelect={setSelected} />
+            )}
+            {tab === "costs" && <CostsTab key={plan.routes[selected].key + plan.request_id} plan={plan} selected={selected} onSelect={setSelected} />}
+            {tab === "impacts" && <ImpactsTab plan={plan} selected={selected} onSelect={setSelected} />}
+            {tab === "funding" && <FundingTab plan={plan} selected={selected} onSelect={setSelected} />}
+            {tab === "proposal" && (
+              <div className="tab-body">
+                <header className="tab-head">
+                  <div>
+                    <h2>Proposal and questions</h2>
+                    <p className="lede">
+                      A draft written by a language model from the computed results only. Every figure in the draft
+                      and in answers is checked against the results; anything not found is flagged.
+                    </p>
+                  </div>
+                </header>
+                <section className="panel">
+                  <ProposalPanel requestId={plan.request_id} suggestions={suggestedQuestions(plan, selected)} />
+                </section>
+              </div>
+            )}
+            {tab === "methodology" && <MethodologyTab plan={plan} weights={weights} onWeights={setWeights} />}
+          </div>
 
-            <section className="sect">
-              <div className="sect-head">
-                <h2>Comparison</h2>
-                <span className="note">Bars are scaled to the largest value in each row.</span>
-              </div>
-              <Comparison routes={plan.routes} selected={selected} onSelect={setSelected} />
-            </section>
-
-            <section className="sect">
-              <div className="sect-head">
-                <h2>Cost and schedule uncertainty</h2>
-                <span className="note">
-                  {route.simulation.runs.toLocaleString()} Monte Carlo runs per alternative; markers show P10, P50
-                  and P90.
-                </span>
-              </div>
-              <div className="ranges">
-                <RangeCompare
-                  title="Capital cost"
-                  routes={plan.routes}
-                  pick={(r) => r.simulation.cost}
-                  format={usd}
-                  selected={selected}
-                  onSelect={setSelected}
-                />
-                <RangeCompare
-                  title="Time to opening"
-                  routes={plan.routes}
-                  pick={(r) => r.simulation.duration}
-                  format={years}
-                  selected={selected}
-                  onSelect={setSelected}
-                />
-              </div>
-              <h3 className="subhead">
-                <Num i={selected} rank={route.rank} selected={selected} /> {route.label}: distribution of runs
-              </h3>
-              <div className="charts">
-                <DistributionChart
-                  title="Capital cost"
-                  dist={route.simulation.cost}
-                  color={PALETTE.gold}
-                  format={usd}
-                  runs={route.simulation.runs}
-                />
-                <DistributionChart
-                  title="Time to opening"
-                  dist={route.simulation.duration}
-                  color={PALETTE.gold}
-                  format={months}
-                  runs={route.simulation.runs}
-                />
-              </div>
-              <dl className="facts">
-                <div>
-                  <dt>Stations</dt>
-                  <dd>{route.stats.stations.join(", ")}</dd>
-                </div>
-                <div>
-                  <dt>River crossings</dt>
-                  <dd>
-                    {route.stats.river_crossings} ({route.stats.river_crossings_new} new)
-                  </dd>
-                </div>
-                <div>
-                  <dt>Environmental flags</dt>
-                  <dd>
-                    {Object.entries(route.stats.env_flags)
-                      .map(([k, v]) => `${v} ${k}`)
-                      .join(", ")}
-                  </dd>
-                </div>
-              </dl>
-            </section>
-
-            <section className="sect two">
-              <div>
-                <div className="sect-head">
-                  <h2>Funding programs</h2>
-                  <span className="note">
-                    For <Num i={selected} rank={route.rank} selected={selected} /> {route.label}. Select a row for the rationale.
-                  </span>
-                </div>
-                <FundingPanel matches={route.funding} basis={route.simulation.cost.p50} />
-              </div>
-              <div>
-                <div className="sect-head">
-                  <h2>Proposal</h2>
-                  <span className="note">Drafted from the computed results only; no new numbers.</span>
-                </div>
-                <ProposalPanel requestId={plan.request_id} />
-              </div>
-            </section>
-
-            <section className="sect notes">
-              <h2>Assumptions and sources</h2>
-              <div className="two">
-                <ol>
-                  {plan.assumptions.map((a) => (
-                    <li key={a}>{a}</li>
-                  ))}
-                </ol>
-                <dl className="sources">
-                  {Object.entries(plan.data_sources).map(([k, v]) => (
-                    <div key={k}>
-                      <dt>{k.replace(/_/g, " ")}</dt>
-                      <dd>
-                        {v.source}
-                        {v.flag !== "real" && <em> ({v.flag})</em>}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-              <p className="note">Generated {new Date(plan.created_at).toLocaleString()}.</p>
-            </section>
-          </>
-        )}
-      </main>
+          <footer className="foot">
+            <span>
+              Illustrative screening estimates. Not a budget, engineering estimate or funding determination.
+            </span>
+            <span>
+              {plan.routes[0].simulation.source === "tiger_cagg" ? "Results stored in Tiger Data" : "Results computed locally"}
+              {" · "}model {plan.model_version || "unknown"}
+            </span>
+          </footer>
+        </main>
+      )}
     </div>
   );
 }

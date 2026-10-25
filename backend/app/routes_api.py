@@ -10,10 +10,11 @@ from __future__ import annotations
 import logging
 
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from . import planner, proposal
-from .config import get_settings
+from .config import DATA_DIR, get_settings
 from .db import DBUnavailable
 from .models import City, PlanResult
 
@@ -124,6 +125,20 @@ def ask(request_id: int, body: AskRequest) -> dict:
     except proposal.GeminiUnavailable as e:
         log.warning("ask unavailable: %s", e)
         raise HTTPException(503, "Q&A is temporarily unavailable (the language model is busy). Try again shortly.")
+
+
+LAYERS = {"rail", "protected"}
+
+
+@router.get("/layers/{name}")
+def get_layer(name: str):
+    """Static map overlays built by scripts/build_layers.py (existing rail, protected areas)."""
+    if name not in LAYERS:
+        raise HTTPException(404, "unknown layer")
+    path = DATA_DIR / "processed" / "layers" / f"{name}.geojson"
+    if not path.exists():
+        raise HTTPException(404, "layer not built; run python -m scripts.build_layers")
+    return FileResponse(path, media_type="application/geo+json", headers={"Cache-Control": "public, max-age=86400"})
 
 
 # Wired up in Phase 8 (ElevenLabs). Until then the UI hides narration.

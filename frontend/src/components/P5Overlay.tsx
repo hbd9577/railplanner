@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type p5 from "p5";
 import { useMap } from "react-leaflet";
 import type { City, PlanResult } from "../api";
-import { PALETTE } from "../format";
+import { altStyle } from "../format";
 
 interface Props {
   plan: PlanResult | null;
@@ -27,8 +27,8 @@ interface Built {
   stations: { at: number; x: number; y: number }[];
 }
 
-const CASING = "#251a09";
-const TIE = "#5a3a1f";
+const CASING = "#1f2937";
+const TIE = "#4b5563";
 const TIE_SPACING_PX = 7;
 const MILES_PER_SECOND = 130;
 const MIN_MS = 3500;
@@ -185,6 +185,7 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
           p.clear();
           const b = state.current.built;
           if (!b) return;
+          const COLOR = altStyle(state.current.selected).color;
           const duration = Math.min(MAX_MS, Math.max(MIN_MS, (b.miles / MILES_PER_SECOND) * 1000));
           const elapsed = performance.now() - start;
           const frac = reduced ? 1 : Math.min(1, elapsed / duration);
@@ -204,7 +205,7 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
           p.stroke(CASING);
           p.strokeWeight(7);
           pathTo(b, length);
-          p.stroke(PALETTE.yellow);
+          p.stroke(COLOR);
           p.strokeWeight(4);
           pathTo(b, length);
 
@@ -213,7 +214,7 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
             if (st.at > length + 1) continue;
             p.stroke(CASING);
             p.strokeWeight(2);
-            p.fill(PALETTE.yellow);
+            p.fill(COLOR);
             p.circle(st.x, st.y, 14);
           }
 
@@ -223,7 +224,7 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
             if (m.at > length) break;
             p.stroke(CASING);
             p.strokeWeight(1.5);
-            p.fill(PALETTE.tan);
+            p.fill("#ffffff");
             p.circle(m.x, m.y, 8);
             const tx = m.x + m.nx * 16;
             const ty = m.y + m.ny * 16;
@@ -244,14 +245,14 @@ export default function P5Overlay({ plan, cities, selected, enabled, replayKey }
             const hy = b.pts[seg - 1].y + (b.pts[seg].y - b.pts[seg - 1].y) * t;
             p.stroke(CASING);
             p.strokeWeight(2);
-            p.fill(PALETTE.yellow);
+            p.fill(COLOR);
             p.circle(hx, hy, 14);
-            label(`Mile ${mile} of ${Math.round(b.miles)}`, hx + 12, hy - 30, CASING, PALETTE.yellow);
+            label(`Mile ${mile} of ${Math.round(b.miles)}`, hx + 12, hy - 30, CASING, "#ffffff");
           } else {
             const end = b.pts[b.pts.length - 1];
             const sinceDone = elapsed - duration;
             if (reduced || sinceDone < DONE_HOLD_MS) {
-              label(`${Math.round(b.miles)} miles of track`, end.x + 12, end.y - 30, CASING, PALETTE.yellow);
+              label(`${Math.round(b.miles)} miles of track`, end.x + 12, end.y - 30, CASING, "#ffffff");
             }
             // finished: stop drawing until the map moves or the build restarts
             if (reduced || sinceDone >= DONE_HOLD_MS) p.noLoop();

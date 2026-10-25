@@ -24,8 +24,9 @@ from scipy.ndimage import binary_dilation
 from .models import RouteStats, ScoreBreakdown, SegmentMiles
 from .routing import Candidate, Grid, load_cities, load_grid
 
-BUFFER_MILES = 10.0
-STATION_RADIUS_KM = 5
+BUFFER_MILES = 10.0  # "population near the alignment" buffer
+STATION_RADIUS_KM = 5  # a known city within this distance of the path counts as a station
+STATION_CATCHMENT_KM = 10  # straight-line station catchment for "population near stations"
 SCORE_WEIGHTS = {
     "population_served": 0.30,
     "row_reuse": 0.20,
@@ -78,12 +79,32 @@ def route_metrics(c: Candidate, g: Grid | None = None) -> dict:
     buffered = binary_dilation(mask, structure=_disk(rad))
     pop_served = float(L["pop"][r0:r1, c0:c1][buffered].sum())
 
+    # Stations: known cities within STATION_RADIUS_KM of the path, ordered along the route, with the
+    # route mile at the nearest path cell.
     near = binary_dilation(mask, structure=_disk(STATION_RADIUS_KM))
-    stations = []
+    found = []
     for city in load_cities():
         cr, cc = g.rc(city["lon"], city["lat"])
         if r0 <= cr < r1 and c0 <= cc < c1 and near[cr - r0, cc - c0]:
-            stations.append(city["name"])
+            k = int(np.argmin((r - cr) ** 2 + (col - cc) ** 2))
+            found.append((k, city["name"], (cr, cc)))
+    found.sort()
+    stations = [name for _, name, _ in found]
+    station_miles = [{"name": name, "mile": round(k * miles_per_cell, 1)} for k, name, _ in found]
+
+    # Population near stations: union of STATION_CATCHMENT_KM straight-line disks around stations,
+    # so overlapping catchments are counted once.
+    srad = int(round(STATION_CATCHMENT_KM * 1000 / g.cell))
+    if found:
+        sr = np.array([rc[0] for *_, rc in found]); sc = np.array([rc[1] for *_, rc in found])
+        a0, a1 = max(sr.min() - srad - 1, 0), min(sr.max() + srad + 2, g.shape[0])
+        b0, b1 = max(sc.min() - srad - 1, 0), min(sc.max() + srad + 2, g.shape[1])
+        smask = np.zeros((a1 - a0, b1 - b0), dtype=bool)
+        smask[sr - a0, sc - b0] = True
+        catch = binary_dilation(smask, structure=_disk(srad))
+        pop_near_stations = float(L["pop"][a0:a1, b0:b1][catch].sum())
+    else:
+        pop_near_stations = 0.0
 
     row_a = L["row_active"][r, col] > 0
     row_i = L["row_inactive"][r, col] > 0
@@ -102,7 +123,15 @@ def route_metrics(c: Candidate, g: Grid | None = None) -> dict:
     env_miles_weighted = float((flagged & ~on_row).sum() + ENV_ON_ROW_WEIGHT * (flagged & on_row).sum()) * miles_per_cell
     river = L["river"][r, col] > 0
     slope = L["slope_mean"][r, col]
+    new = treatment == "new"
     return {
+        "station_miles": station_miles,
+        "pop_near_stations": pop_near_stations,
+        "miles_new": float(new.sum() * miles_per_cell),
+        "miles_upgrade": float(row_a.sum() * miles_per_cell),
+        "miles_reactivation": float((row_i & ~row_a).sum() * miles_per_cell),
+        "miles_new_mountainous": float((new & (terrain == "mountainous")).sum() * miles_per_cell),
+        "env_miles": {k: round(float((L[f"env_{k}"][r, col] > 0).sum() * miles_per_cell), 1) for k in ENV_KINDS},
         "length_miles": c.length_miles,
         "population_served": pop_served,
         "row_reuse_pct": float((row_a | row_i).mean() * 100),
@@ -111,6 +140,7 @@ def route_metrics(c: Candidate, g: Grid | None = None) -> dict:
         "env_flags": env_flags,
         "env_flag_count": int(sum(env_flags.values())),
         "env_miles_weighted": env_miles_weighted,
+        "env_miles_new": float((flagged & ~on_row).sum() * miles_per_cell),
         "river_crossings": _entries(river),
         "river_crossings_new": _entries(river & ~on_row),
         "stations": stations,
@@ -151,6 +181,15 @@ def score_routes(metrics: list[dict]) -> list[RouteStats]:
             env_flags=m["env_flags"],
             river_crossings=m["river_crossings"],
             river_crossings_new=m["river_crossings_new"],
+            station_miles=m["station_miles"],
+            pop_near_stations=int(round(m["pop_near_stations"], -3)),
+            station_catchment_km=STATION_CATCHMENT_KM,
+            miles_new=round(m["miles_new"], 1),
+            miles_upgrade=round(m["miles_upgrade"], 1),
+            miles_reactivation=round(m["miles_reactivation"], 1),
+            miles_new_mountainous=round(m["miles_new_mountainous"], 1),
+            env_miles=m["env_miles"],
+            env_miles_new=round(m["env_miles_new"], 1),
             stations=m["stations"],
             segments=m["segments"],
             score=round(score, 1),

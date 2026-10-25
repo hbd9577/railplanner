@@ -51,7 +51,16 @@ class RouteStats(BaseModel):
     env_flags: dict[str, int]  # per kind: protected / wetland / floodplain
     river_crossings: int
     river_crossings_new: int  # crossings off existing ROW (new bridges); the rest are rehab
-    stations: list[str]
+    stations: list[str]  # ordered along the route, origin first
+    station_miles: list[dict] = []  # [{name, mile}] route mile of each station
+    pop_near_stations: int = 0  # residents within station_catchment_km of any station (deduplicated)
+    station_catchment_km: float = 10
+    miles_new: float = 0  # new track off existing rail ROW
+    miles_upgrade: float = 0  # on active rail ROW
+    miles_reactivation: float = 0  # on inactive/abandoned rail ROW
+    miles_new_mountainous: float = 0  # new track in mountainous terrain (mean slope >= 8%)
+    env_miles: dict[str, float] = {}  # miles of path inside each flag layer
+    env_miles_new: float = 0.0  # miles inside any flag layer, off existing rail corridors (counted once)
     segments: list[SegmentMiles]
     score: float  # 0-100
     score_breakdown: ScoreBreakdown
@@ -127,3 +136,4 @@ class PlanResult(BaseModel):
     data_sources: dict
     created_at: str
     cached: bool = False
+    model_version: str = ""

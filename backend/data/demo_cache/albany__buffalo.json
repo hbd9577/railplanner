@@ -1,5 +1,5 @@
 {
- "request_id": 20,
+ "request_id": 60,
  "origin": {
   "id": 5,
   "name": "Albany",
@@ -18,7 +18,7 @@
  },
  "routes": [
   {
-   "id": 58,
+   "id": 178,
    "rank": 1,
    "key": "row",
    "label": "Existing corridor upgrade",
@@ -2188,11 +2188,41 @@
     "river_crossings": 8,
     "river_crossings_new": 0,
     "stations": [
-     "Buffalo",
-     "Syracuse",
      "Albany",
-     "Utica"
+     "Utica",
+     "Syracuse",
+     "Buffalo"
     ],
+    "station_miles": [
+     {
+      "name": "Albany",
+      "mile": 0.0
+     },
+     {
+      "name": "Utica",
+      "mile": 89.8
+     },
+     {
+      "name": "Syracuse",
+      "mile": 141.4
+     },
+     {
+      "name": "Buffalo",
+      "mile": 283.6
+     }
+    ],
+    "pop_near_stations": 965000,
+    "station_catchment_km": 10.0,
+    "miles_new": 0.0,
+    "miles_upgrade": 284.2,
+    "miles_reactivation": 0.0,
+    "miles_new_mountainous": 0.0,
+    "env_miles": {
+     "protected": 1.3,
+     "wetland": 0.7,
+     "floodplain": 102.6
+    },
+    "env_miles_new": 0.0,
     "segments": [
      {
       "treatment": "upgrade",
@@ -2647,7 +2677,7 @@
    ]
   },
   {
-   "id": 59,
+   "id": 179,
    "rank": 2,
    "key": "direct",
    "label": "New direct alignment",
@@ -3889,9 +3919,31 @@
     "river_crossings": 2,
     "river_crossings_new": 0,
     "stations": [
-     "Buffalo",
-     "Albany"
+     "Albany",
+     "Buffalo"
     ],
+    "station_miles": [
+     {
+      "name": "Albany",
+      "mile": 0.0
+     },
+     {
+      "name": "Buffalo",
+      "mile": 274.0
+     }
+    ],
+    "pop_near_stations": 603000,
+    "station_catchment_km": 10.0,
+    "miles_new": 229.0,
+    "miles_upgrade": 41.7,
+    "miles_reactivation": 4.0,
+    "miles_new_mountainous": 0.7,
+    "env_miles": {
+     "protected": 0.0,
+     "wetland": 0.0,
+     "floodplain": 6.6
+    },
+    "env_miles_new": 2.0,
     "segments": [
      {
       "treatment": "new",
@@ -4418,11 +4470,11 @@
    ]
   },
   {
-   "id": 60,
+   "id": 180,
    "rank": 3,
-   "key": "population",
-   "label": "Maximum population served",
-   "description": "Bends toward population centers to maximize riders within reach of the line.",
+   "key": "cities",
+   "label": "Via intermediate cities",
+   "description": "Routes through the largest intermediate cities that fit within a 25% detour of a straight line, so more cities can have stations. It connects cities; it does not maximize the population near the line.",
    "geometry": {
     "type": "LineString",
     "coordinates": [
@@ -6556,12 +6608,46 @@
     "river_crossings": 5,
     "river_crossings_new": 1,
     "stations": [
-     "Buffalo",
-     "Rochester",
-     "Syracuse",
      "Albany",
-     "Utica"
+     "Utica",
+     "Syracuse",
+     "Rochester",
+     "Buffalo"
     ],
+    "station_miles": [
+     {
+      "name": "Albany",
+      "mile": 0.0
+     },
+     {
+      "name": "Utica",
+      "mile": 102.6
+     },
+     {
+      "name": "Syracuse",
+      "mile": 150.9
+     },
+     {
+      "name": "Rochester",
+      "mile": 233.7
+     },
+     {
+      "name": "Buffalo",
+      "mile": 314.4
+     }
+    ],
+    "pop_near_stations": 1353000,
+    "station_catchment_km": 10.0,
+    "miles_new": 152.2,
+    "miles_upgrade": 158.2,
+    "miles_reactivation": 4.6,
+    "miles_new_mountainous": 0.7,
+    "env_miles": {
+     "protected": 0.7,
+     "wetland": 2.0,
+     "floodplain": 14.6
+    },
+    "env_miles_new": 3.3,
     "segments": [
      {
       "treatment": "new",
@@ -6683,317 +6769,307 @@
     "source": "tiger_cagg",
     "cost": {
      "unit": "usd",
-     "p10": 10919348355.016146,
-     "p50": 13148578025.541311,
-     "p90": 15783177636.601498,
-     "mean": 13274109289.480984,
-     "min": 8026201608.906561,
-     "max": 22179786404.188255,
+     "p10": 10956369409.116957,
+     "p50": 13159387292.631662,
+     "p90": 15853127136.575796,
+     "mean": 13298410770.127138,
+     "min": 8119463884.043527,
+     "max": 21312229866.863415,
      "histogram": [
       {
-       "lo": 7943282347.242822,
-       "hi": 8222426499.4706955,
-       "count": 3
+       "lo": 8035261221.856194,
+       "hi": 8317637711.026709,
+       "count": 2
       },
       {
-       "lo": 8222426499.4706955,
-       "hi": 8511380382.023759,
-       "count": 5
+       "lo": 8317637711.026709,
+       "hi": 8609937521.846016,
+       "count": 7
       },
       {
-       "lo": 8511380382.023759,
-       "hi": 8810488730.080147,
-       "count": 3
-      },
-      {
-       "lo": 8810488730.080147,
-       "hi": 9120108393.559114,
-       "count": 15
-      },
-      {
-       "lo": 9120108393.559114,
-       "hi": 9440608762.859226,
-       "count": 22
-      },
-      {
-       "lo": 9440608762.859226,
-       "hi": 9772372209.558111,
-       "count": 42
-      },
-      {
-       "lo": 9772372209.558111,
-       "hi": 10115794542.598963,
-       "count": 101
-      },
-      {
-       "lo": 10115794542.598963,
-       "hi": 10471285480.508986,
-       "count": 117
-      },
-      {
-       "lo": 10471285480.508986,
-       "hi": 10839269140.212038,
-       "count": 153
-      },
-      {
-       "lo": 10839269140.212038,
-       "hi": 11220184543.019653,
-       "count": 221
-      },
-      {
-       "lo": 11220184543.019653,
-       "hi": 11614486138.403414,
-       "count": 292
-      },
-      {
-       "lo": 11614486138.403414,
-       "hi": 12022644346.174131,
-       "count": 363
-      },
-      {
-       "lo": 12022644346.174131,
-       "hi": 12445146117.71387,
-       "count": 406
-      },
-      {
-       "lo": 12445146117.71387,
-       "hi": 12882495516.931322,
-       "count": 459
-      },
-      {
-       "lo": 12882495516.931322,
-       "hi": 13335214321.63324,
-       "count": 492
-      },
-      {
-       "lo": 13335214321.63324,
-       "hi": 13803842646.028866,
-       "count": 447
-      },
-      {
-       "lo": 13803842646.028866,
-       "hi": 14288939585.111067,
-       "count": 460
-      },
-      {
-       "lo": 14288939585.111067,
-       "hi": 14791083881.682072,
-       "count": 386
-      },
-      {
-       "lo": 14791083881.682072,
-       "hi": 15310874616.820318,
-       "count": 293
-      },
-      {
-       "lo": 15310874616.820318,
-       "hi": 15848931924.611109,
-       "count": 246
-      },
-      {
-       "lo": 15848931924.611109,
-       "hi": 16405897731.995388,
-       "count": 176
-      },
-      {
-       "lo": 16405897731.995388,
-       "hi": 16982436524.61746,
-       "count": 107
-      },
-      {
-       "lo": 16982436524.61746,
-       "hi": 17579236139.586967,
-       "count": 85
-      },
-      {
-       "lo": 17579236139.586967,
-       "hi": 18197008586.099827,
-       "count": 49
-      },
-      {
-       "lo": 18197008586.099827,
-       "hi": 18836490894.89802,
-       "count": 27
-      },
-      {
-       "lo": 18836490894.89802,
-       "hi": 19498445997.580414,
-       "count": 16
-      },
-      {
-       "lo": 19498445997.580414,
-       "hi": 20183663636.815598,
+       "lo": 8609937521.846016,
+       "hi": 8912509381.33744,
        "count": 8
       },
       {
-       "lo": 20183663636.815598,
-       "hi": 20892961308.54041,
+       "lo": 8912509381.33744,
+       "hi": 9225714271.547628,
+       "count": 20
+      },
+      {
+       "lo": 9225714271.547628,
+       "hi": 9549925860.214369,
+       "count": 18
+      },
+      {
+       "lo": 9549925860.214369,
+       "hi": 9885530946.56941,
+       "count": 58
+      },
+      {
+       "lo": 9885530946.56941,
+       "hi": 10232929922.807537,
+       "count": 92
+      },
+      {
+       "lo": 10232929922.807537,
+       "hi": 10592537251.772898,
+       "count": 121
+      },
+      {
+       "lo": 10592537251.772898,
+       "hi": 10964781961.43183,
+       "count": 178
+      },
+      {
+       "lo": 10964781961.43183,
+       "hi": 11350108156.723143,
+       "count": 252
+      },
+      {
+       "lo": 11350108156.723143,
+       "hi": 11748975549.395304,
+       "count": 311
+      },
+      {
+       "lo": 11748975549.395304,
+       "hi": 12161860006.463703,
+       "count": 374
+      },
+      {
+       "lo": 12161860006.463703,
+       "hi": 12589254117.941662,
+       "count": 447
+      },
+      {
+       "lo": 12589254117.941662,
+       "hi": 13031667784.523,
+       "count": 479
+      },
+      {
+       "lo": 13031667784.523,
+       "hi": 13489628825.916506,
+       "count": 461
+      },
+      {
+       "lo": 13489628825.916506,
+       "hi": 13963683610.559362,
+       "count": 461
+      },
+      {
+       "lo": 13963683610.559362,
+       "hi": 14454397707.45928,
+       "count": 399
+      },
+      {
+       "lo": 14454397707.45928,
+       "hi": 14962356560.944359,
+       "count": 375
+      },
+      {
+       "lo": 14962356560.944359,
+       "hi": 15488166189.124796,
+       "count": 292
+      },
+      {
+       "lo": 15488166189.124796,
+       "hi": 16032453906.900417,
+       "count": 230
+      },
+      {
+       "lo": 16032453906.900417,
+       "hi": 16595869074.375631,
+       "count": 163
+      },
+      {
+       "lo": 16595869074.375631,
+       "hi": 17179083871.57586,
+       "count": 102
+      },
+      {
+       "lo": 17179083871.57586,
+       "hi": 17782794100.38923,
+       "count": 70
+      },
+      {
+       "lo": 17782794100.38923,
+       "hi": 18407720014.689583,
+       "count": 37
+      },
+      {
+       "lo": 18407720014.689583,
+       "hi": 19054607179.632523,
+       "count": 20
+      },
+      {
+       "lo": 19054607179.632523,
+       "hi": 19724227361.148533,
+       "count": 11
+      },
+      {
+       "lo": 19724227361.148533,
+       "hi": 20417379446.695316,
+       "count": 6
+      },
+      {
+       "lo": 20417379446.695316,
+       "hi": 21134890398.366432,
        "count": 3
       },
       {
-       "lo": 20892961308.54041,
-       "hi": 21627185237.270245,
-       "count": 0
-      },
-      {
-       "lo": 21627185237.270245,
-       "hi": 22387211385.683376,
+       "lo": 21134890398.366432,
+       "hi": 21877616239.495518,
        "count": 3
       }
      ]
     },
     "duration": {
      "unit": "months",
-     "p10": 155.38709677419354,
-     "p50": 176.78358208955223,
-     "p90": 200.42105263157896,
-     "mean": 177.42825747699388,
-     "min": 127.15677702558841,
-     "max": 241.04439649743563,
+     "p10": 154.76666666666668,
+     "p50": 176.02542372881356,
+     "p90": 199.47727272727272,
+     "mean": 176.77051545924718,
+     "min": 124.53958195657681,
+     "max": 261.1514080509345,
      "histogram": [
       {
-       "lo": 127.0,
-       "hi": 131.0,
-       "count": 4
+       "lo": 124.5,
+       "hi": 129.5,
+       "count": 8
       },
       {
-       "lo": 131.0,
-       "hi": 135.0,
-       "count": 9
+       "lo": 129.5,
+       "hi": 134.5,
+       "count": 8
       },
       {
-       "lo": 135.0,
-       "hi": 139.0,
-       "count": 23
+       "lo": 134.5,
+       "hi": 139.5,
+       "count": 29
       },
       {
-       "lo": 139.0,
-       "hi": 143.0,
-       "count": 54
+       "lo": 139.5,
+       "hi": 144.5,
+       "count": 72
       },
       {
-       "lo": 143.0,
-       "hi": 147.0,
-       "count": 78
+       "lo": 144.5,
+       "hi": 149.5,
+       "count": 131
       },
       {
-       "lo": 147.0,
-       "hi": 151.0,
-       "count": 125
+       "lo": 149.5,
+       "hi": 154.5,
+       "count": 236
       },
       {
-       "lo": 151.0,
-       "hi": 155.0,
-       "count": 183
+       "lo": 154.5,
+       "hi": 159.5,
+       "count": 379
       },
       {
-       "lo": 155.0,
-       "hi": 159.0,
-       "count": 277
+       "lo": 159.5,
+       "hi": 164.5,
+       "count": 421
       },
       {
-       "lo": 159.0,
-       "hi": 163.0,
-       "count": 300
+       "lo": 164.5,
+       "hi": 169.5,
+       "count": 510
       },
       {
-       "lo": 163.0,
-       "hi": 167.0,
-       "count": 363
+       "lo": 169.5,
+       "hi": 174.5,
+       "count": 543
       },
       {
-       "lo": 167.0,
-       "hi": 171.0,
-       "count": 424
+       "lo": 174.5,
+       "hi": 179.5,
+       "count": 548
       },
       {
-       "lo": 171.0,
-       "hi": 175.0,
-       "count": 445
+       "lo": 179.5,
+       "hi": 184.5,
+       "count": 495
       },
       {
-       "lo": 175.0,
-       "hi": 179.0,
-       "count": 479
+       "lo": 184.5,
+       "hi": 189.5,
+       "count": 446
       },
       {
-       "lo": 179.0,
-       "hi": 183.0,
-       "count": 420
+       "lo": 189.5,
+       "hi": 194.5,
+       "count": 370
       },
       {
-       "lo": 183.0,
-       "hi": 187.0,
-       "count": 411
+       "lo": 194.5,
+       "hi": 199.5,
+       "count": 305
       },
       {
-       "lo": 187.0,
-       "hi": 191.0,
-       "count": 331
-      },
-      {
-       "lo": 191.0,
-       "hi": 195.0,
-       "count": 264
-      },
-      {
-       "lo": 195.0,
-       "hi": 199.0,
-       "count": 243
-      },
-      {
-       "lo": 199.0,
-       "hi": 203.0,
+       "lo": 199.5,
+       "hi": 204.5,
        "count": 184
       },
       {
-       "lo": 203.0,
-       "hi": 207.0,
+       "lo": 204.5,
+       "hi": 209.5,
        "count": 120
       },
       {
-       "lo": 207.0,
-       "hi": 211.0,
-       "count": 93
+       "lo": 209.5,
+       "hi": 214.5,
+       "count": 81
       },
       {
-       "lo": 211.0,
-       "hi": 215.0,
-       "count": 58
+       "lo": 214.5,
+       "hi": 219.5,
+       "count": 62
       },
       {
-       "lo": 215.0,
-       "hi": 219.0,
-       "count": 56
+       "lo": 219.5,
+       "hi": 224.5,
+       "count": 24
       },
       {
-       "lo": 219.0,
-       "hi": 223.0,
-       "count": 31
+       "lo": 224.5,
+       "hi": 229.5,
+       "count": 13
       },
       {
-       "lo": 223.0,
-       "hi": 227.0,
-       "count": 16
+       "lo": 229.5,
+       "hi": 234.5,
+       "count": 10
       },
       {
-       "lo": 227.0,
-       "hi": 231.0,
-       "count": 4
+       "lo": 234.5,
+       "hi": 239.5,
+       "count": 0
       },
       {
-       "lo": 231.0,
-       "hi": 235.0,
-       "count": 2
+       "lo": 239.5,
+       "hi": 244.5,
+       "count": 3
       },
       {
-       "lo": 235.0,
-       "hi": 239.0,
-       "count": 2
+       "lo": 244.5,
+       "hi": 249.5,
+       "count": 1
       },
       {
-       "lo": 239.0,
-       "hi": 243.0,
+       "lo": 249.5,
+       "hi": 254.5,
+       "count": 0
+      },
+      {
+       "lo": 254.5,
+       "hi": 259.5,
+       "count": 0
+      },
+      {
+       "lo": 259.5,
+       "hi": 264.5,
        "count": 1
       }
      ]
@@ -7009,9 +7085,9 @@
      "fit_score": 0.95,
      "rationale": "Planning entry point: Step 1 scoping is federally funded (about $500K) and places the corridor in the pipeline FRA uses to prioritize FSP-National capital awards.",
      "cost_share": {
-      "basis_cost_usd": 13148600000.0,
+      "basis_cost_usd": 13159400000.0,
       "federal_usd": 500000.0,
-      "non_federal_usd": 13148100000.0,
+      "non_federal_usd": 13158900000.0,
       "federal_pct": 0.0,
       "loan_usd": 0.0
      }
@@ -7023,11 +7099,11 @@
      "kind": "grant",
      "eligible": true,
      "fit_score": 0.9,
-     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($13.1B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards.",
+     "rationale": "Core federal capital program for intercity passenger rail; this route is a largely new alignment. Up to 80% federal share. The P50 cost ($13.2B) exceeds the largest typical award ($3.0B), so the project would likely need to be phased across several awards.",
      "cost_share": {
-      "basis_cost_usd": 13148600000.0,
+      "basis_cost_usd": 13159400000.0,
       "federal_usd": 3000000000.0,
-      "non_federal_usd": 10148600000.0,
+      "non_federal_usd": 10159400000.0,
       "federal_pct": 22.8,
       "loan_usd": 0.0
      }
@@ -7041,11 +7117,11 @@
      "fit_score": 0.6,
      "rationale": "Low-interest federal loan that could finance the non-federal match (20% of P50 is $2.6B). Requires a repayment source such as state appropriations or farebox revenue.",
      "cost_share": {
-      "basis_cost_usd": 13148600000.0,
+      "basis_cost_usd": 13159400000.0,
       "federal_usd": 0.0,
-      "non_federal_usd": 13148600000.0,
+      "non_federal_usd": 13159400000.0,
       "federal_pct": 0.0,
-      "loan_usd": 2629700000.0
+      "loan_usd": 2631900000.0
      }
     },
     {
@@ -7057,9 +7133,9 @@
      "fit_score": 0.55,
      "rationale": "Fits partially: CRISI funds safety, capacity and grade-crossing work on existing lines. Awards top out near $250M, so it suits discrete packages such as grade separations or sidings.",
      "cost_share": {
-      "basis_cost_usd": 13148600000.0,
+      "basis_cost_usd": 13159400000.0,
       "federal_usd": 250000000.0,
-      "non_federal_usd": 12898600000.0,
+      "non_federal_usd": 12909400000.0,
       "federal_pct": 1.9,
       "loan_usd": 0.0
      }
@@ -7073,9 +7149,9 @@
      "fit_score": 0.45,
      "rationale": "Capped near $25M per award: useful for a station or grade separation (the route serves 5 stations), not the core build.",
      "cost_share": {
-      "basis_cost_usd": 13148600000.0,
+      "basis_cost_usd": 13159400000.0,
       "federal_usd": 25000000.0,
-      "non_federal_usd": 13123600000.0,
+      "non_federal_usd": 13134400000.0,
       "federal_pct": 0.2,
       "loan_usd": 0.0
      }
@@ -7089,9 +7165,9 @@
      "fit_score": 0.0,
      "rationale": "Not eligible: the route does not use the Northeast Corridor main line.",
      "cost_share": {
-      "basis_cost_usd": 13148600000.0,
+      "basis_cost_usd": 13159400000.0,
       "federal_usd": 0.0,
-      "non_federal_usd": 13148600000.0,
+      "non_federal_usd": 13159400000.0,
       "federal_pct": 0.0,
       "loan_usd": 0.0
      }
@@ -7141,6 +7217,7 @@
    "flag": "approximate (proxy, demo only)"
   }
  },
- "created_at": "2026-10-24T18:52:41+00:00",
- "cached": false
+ "created_at": "2026-10-25T03:17:13+00:00",
+ "cached": false,
+ "model_version": "2026.10.25-2"
 }

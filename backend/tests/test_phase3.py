@@ -37,10 +37,11 @@ def test_route_stats_ranges(scored):
 
 def test_strategies_win_their_own_metric(scored):
     _, stats = scored
-    by_key = dict(zip(["row", "direct", "population"], stats))
+    by_key = dict(zip(["row", "direct", "cities"], stats))
     assert by_key["row"].row_reuse_pct == max(s.row_reuse_pct for s in stats)
     assert by_key["direct"].length_miles == min(s.length_miles for s in stats)
-    assert by_key["population"].population_served == max(s.population_served for s in stats)
+    # the via-cities alternative connects intermediate cities; it is not a population maximizer
+    assert len(by_key["cities"].stations) == max(len(s.stations) for s in stats)
 
 
 # ---------------------------------------------------------------- simulation
@@ -124,3 +125,19 @@ def test_plan_round_trip_through_tiger():
             conn.execute("DELETE FROM simulation_runs WHERE route_id = ANY(%s)", (route_ids,))
             conn.execute("DELETE FROM corridor_requests WHERE id = %s", (plan.request_id,))
         db.close_pool()
+
+
+def test_stations_ordered_and_station_population(scored):
+    _, stats = scored
+    for s in stats:
+        miles = [m["mile"] for m in s.station_miles]
+        assert miles == sorted(miles) and s.stations[0] == "Albany" and s.stations[-1] == "Buffalo"
+        assert 0 < s.pop_near_stations <= s.population_served * 1.5
+        assert abs(s.miles_new + s.miles_upgrade + s.miles_reactivation - s.length_miles) < 0.02 * s.length_miles
+
+
+def test_via_cities_no_zigzag_on_long_corridor():
+    from app.routing import generate_candidates, load_cities
+    C = {c["name"]: (c["lon"], c["lat"]) for c in load_cities()}
+    cities = next(c for c in generate_candidates(C["Poughkeepsie"], C["Chicago"]) if c.key == "cities")
+    assert cities.length_miles < 1100  # the old heuristic zig-zagged to ~1,290 mi

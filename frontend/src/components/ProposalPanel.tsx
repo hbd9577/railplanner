@@ -4,6 +4,7 @@ import { ApiError, api, type NumberCheck, type ProposalResult } from "../api";
 
 interface Props {
   requestId: number | null;
+  suggestions: string[];
 }
 
 type Status = { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string };
@@ -13,7 +14,7 @@ function errorText(e: unknown, fallback: string): string {
   return e instanceof Error ? `${fallback}: ${e.message}` : fallback;
 }
 
-export default function ProposalPanel({ requestId }: Props) {
+export default function ProposalPanel({ requestId, suggestions }: Props) {
   const [proposal, setProposal] = useState<ProposalResult | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const [voiceOk, setVoiceOk] = useState(false); // shown only when the API reports voice is configured
@@ -71,9 +72,9 @@ export default function ProposalPanel({ requestId }: Props) {
     }
   }
 
-  async function ask(e: React.FormEvent) {
-    e.preventDefault();
-    const q = question.trim();
+  async function ask(e: React.FormEvent | null, preset?: string) {
+    e?.preventDefault();
+    const q = (preset ?? question).trim();
     if (!q) return;
     setAskState({ kind: "loading" });
     try {
@@ -144,13 +145,20 @@ export default function ProposalPanel({ requestId }: Props) {
         <input
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ask about these results, e.g. Why is route 2 cheaper?"
+          placeholder="Ask a question about these results"
           aria-label="Question about the results"
         />
         <button type="submit" disabled={askState.kind === "loading" || !question.trim()}>
           {askState.kind === "loading" ? "Answering…" : "Ask"}
         </button>
       </form>
+      <div className="suggest" aria-label="Suggested questions">
+        {suggestions.map((q) => (
+          <button key={q} className="suggest-q" disabled={askState.kind === "loading"} onClick={() => ask(null, q)}>
+            {q}
+          </button>
+        ))}
+      </div>
       {askState.kind === "error" && <p className="notice">{askState.message}</p>}
       {answers.map((x, i) => (
         <div key={i} className="qa">

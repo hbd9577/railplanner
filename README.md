@@ -3,9 +3,13 @@
 Decision support for planning new US passenger rail corridors. Built for **SBUHacks 2026**.
 
 Pick two cities. RailPlanner generates three candidate alignments on real rail, terrain, population and
-protected-land data, scores them, runs 5,000 Monte Carlo simulations of cost and schedule per alternative
-(stored in Tiger Data), matches each one to federal funding programs, and drafts a proposal with Gemini that
-is checked so it cannot introduce numbers of its own.
+protected-land data, runs 5,000 Monte Carlo simulations of cost and schedule per alternative (stored in Tiger
+Data), ranks them under priorities you can adjust, screens federal funding fit, and drafts a proposal with
+Gemini that is checked so it cannot introduce numbers of its own.
+
+It is a screening tool and says what it does not know: train service, travel time, ridership, capacity and
+operating cost are not modeled, and every figure is labeled as calculated, approximate, an illustrative
+estimate, rule-based, or not modeled.
 
 **Live demo:** http://45.77.76.26 · New York → Chicago: http://45.77.76.26/?from=1&to=33
 
@@ -19,14 +23,27 @@ is checked so it cannot introduce numbers of its own.
 
 | Step | What happens | Where |
 |---|---|---|
-| Choose a corridor | Pick an origin and destination (17 cities from New York to Chicago), or click two cities on the map | `frontend/src/App.tsx` |
-| Generate alternatives | Least-cost paths on a 1 km grid with three strategies: upgrade existing rail, a new direct alignment, maximize population (or named corridor templates for long routes, e.g. the Lake Shore vs Pennsylvania routes for NYC–Chicago) | `backend/app/routing.py` |
-| Score | Length, population within 10 mi, % on existing rail, terrain slope, environmental flags, river crossings → a documented 0–100 composite | `backend/app/scoring.py` |
+| Choose a corridor | Type an origin and destination (17 cities from New York to Chicago), or pick two cities on the map | `frontend/src/components/Toolbar.tsx` |
+| Generate alternatives | Least-cost paths on a 1 km grid with three strategies: upgrade existing rail, a new direct alignment, and a route via intermediate cities within a 25% detour (or named corridor templates for long routes, e.g. the Lake Shore vs Pennsylvania routes for NYC–Chicago) | `backend/app/routing.py` |
+| Measure | Length, share on existing rail, new-track miles (and in mountainous terrain), stations in route order, residents near stations (10 km, counted once) and near the line (10 mi), flagged miles on new track, river crossings | `backend/app/scoring.py`, `frontend/src/metrics.ts` |
+| Rank | Adjustable weights on cost, delivery, residents near stations, new track in flagged areas and new right-of-way; the ranking, its explanation and the decision summary update live and travel with saved, shared and exported scenarios | `frontend/src/scoring.ts`, `frontend/src/summary.ts` |
 | Simulate | 5,000 PERT/triangular Monte Carlo runs of capital cost and time to opening per alternative, bulk-loaded into a TimescaleDB hypertable; P10/P50/P90 and histograms are read back from a continuous aggregate | `backend/app/simulation.py`, `backend/sql/schema.sql` |
 | Match funding | Rule-based fit against six federal programs (FSP-National, FSP-NEC, CRISI, BUILD, RRIF, Corridor ID) with federal/non-federal split at the median cost | `backend/app/funding.py` |
 | Draft a proposal | Gemini writes the six required sections from a payload of pre-formatted figures; a number check rejects any figure not in the payload, retries once, then falls back to a template draft | `backend/app/proposal.py` |
 | Ask questions | Gemini answers questions about the results under the same number check | `backend/app/proposal.py` |
-| Watch it built | A p5.js canvas over the satellite map lays the active corridor's track mile by mile | `frontend/src/components/P5Overlay.tsx` |
+| Save, share, export | Scenarios save in the browser; Share copies a link with corridor, selection, tab and weights; Export downloads a self-contained HTML report | `frontend/src/scenario.ts` |
+| Watch it built (optional) | A p5.js canvas lays the selected corridor's track mile by mile; off by default | `frontend/src/components/P5Overlay.tsx` |
+
+### The workspace
+
+A toolbar holds the corridor, **Compare routes**, priorities, assumptions and Save / Share / Export. Tabs:
+**Overview** (decision summary generated from the active scenario, map with legend and ordered stations,
+alternative cards with what each gains and gives up), **Service & demand** (what is not modeled and why it
+matters; population vs access vs ridership), **Comparison** (one grouped table with preferred direction,
+status, definitions on demand and differences from a chosen baseline), **Costs & schedule** (P10/P50/P90
+explained, histograms, budget and opening-date checks, what the estimates include and exclude),
+**Impacts**, **Funding**, **Proposal & questions** (suggested questions generated from the results), and
+**Methodology** (metric registry with source, year, coverage and method; scoring; assumptions).
 
 ## Architecture
 
@@ -170,22 +187,21 @@ fail. Set `SITE_ADDRESS` to a domain that points at the VM and `deploy.sh` adds 
 
 1. **Open** http://45.77.76.26. "RailPlanner helps a state DOT compare passenger rail alternatives before
    spending money on a study."
-2. **Choose New York City → Chicago** and click **Plan corridor**. While the track is laid mile by mile:
-   "Three alternatives: upgrade the Lake Shore route, upgrade the Pennsylvania route, or build a new direct
-   line. They're routed on real rail, terrain, population and protected-land data."
-3. **Click route 2 (Pennsylvania)** in the Routes list. The construction restarts on that alignment. Read the
-   summary: highest score, lowest median cost, shortest schedule.
-4. **Scroll to Comparison.** "Every row has a bar; 'best' marks the leader. The direct line is shortest but
-   needs new right-of-way, so it costs more."
-5. **Cost and schedule uncertainty.** "These aren't single numbers. Each alternative is 5,000 Monte Carlo runs
-   stored in a Tiger Data hypertable; the P10/P50/P90 ranges and histograms come straight from a TimescaleDB
-   continuous aggregate."
-6. **Funding.** Open the FSP-National row: "Its typical award covers only a slice of this cost, so the
-   tool flags phasing and the need for a multi-state sponsor." Point out the NEC eligibility on the
-   Pennsylvania route's New York–Philadelphia segment.
-7. **Generate proposal.** "Gemini drafts the proposal, but it can't invent numbers: every figure is checked
-   against our computed results." Point at the green number-check line.
-8. **Ask a question**, e.g. "Why does the direct alignment take longer to open even though it is shorter?"
+2. **Type New York City → Chicago** and click **Compare routes**. Read the Overview: which alternative leads
+   under the current model and priorities, its median cost and opening time with ranges, why it leads, the
+   main tradeoff, and the "Service not yet modeled" callout.
+3. **Click another alternative** on the map or in the legend. Selection follows across every tab; "Leads" and
+   "Selected" are marked separately.
+4. **Priorities.** Move "Residents near stations" up: the ranking and summary update and the panel explains
+   why the leader changed.
+5. **Comparison.** "One table, grouped by what each measure tells you, with the preferred direction and how
+   each figure was produced. Rows we can't estimate yet say so."
+6. **Costs & schedule.** "Each alternative is 5,000 Monte Carlo runs stored in a Tiger Data hypertable; the
+   P10/P50/P90 ranges and histograms come from a TimescaleDB continuous aggregate." Enter a budget to see
+   the share of runs above it.
+7. **Funding**, then **Proposal & questions**: generate the draft (number check passes) and click a
+   suggested question.
+8. **Share** or **Export report** to hand the scenario, with its weights, to someone else.
 9. **Close:** "Every figure here is illustrative, and the tool says so. The point is a fast, honest
    comparison before a $500K Corridor ID study, not a replacement for it."
 
@@ -232,7 +248,12 @@ Route maps generated by `scripts/plot_routes.py` (hillshade, existing rail, prot
 
 ## Limitations
 
-- Costs are illustrative: per-mile benchmarks are placeholders, not calibrated to any project.
+- Train service is not modeled: no travel times, frequency, ridership, reliability, capacity or operating
+  cost, and no benefit-cost ratio. The ranking compares construction and access measures only.
+- Costs are illustrative: per-mile benchmarks are placeholders, not calibrated to any project. No cost year
+  or escalation; rolling stock, facilities, electrification and host-railroad access payments are excluded.
+- Being on an existing rail corridor does not imply access, spare capacity or track suitable for passenger
+  service.
 - Alignments are conceptual paths on a 1 km grid, not engineered designs; curvature, grades and station
   siting are not modeled.
 - Floodplain flags are a proxy (river corridors), not FEMA flood maps.

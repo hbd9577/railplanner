@@ -69,7 +69,7 @@ class Strategy:
 
 
 # Mirrors the alternative families typical of corridor studies (e.g. NYSDOT Empire Corridor Tier 1 EIS):
-# upgrade the existing line, build a new direct alignment, or chase population.
+# upgrade the existing line, build a new direct alignment, or connect intermediate cities.
 STRATEGIES: list[Strategy] = [
     Strategy("row", "Existing corridor upgrade",
              "Follows existing rail right-of-way wherever possible to minimize new land acquisition.",
@@ -77,8 +77,10 @@ STRATEGIES: list[Strategy] = [
     Strategy("direct", "New direct alignment",
              "Greenfield alignment that trades ROW reuse for a shorter, straighter, faster route.",
              Weights(slope=1.0, urban=1.5, env=1.0, row=0.0, length=4.0), diversity=1.5),
-    Strategy("population", "Maximum population served",
-             "Bends toward population centers to maximize riders within reach of the line.",
+    Strategy("cities", "Via intermediate cities",
+             "Routes through the largest intermediate cities that fit within a 25% detour of a straight "
+             "line, so more cities can have stations. It connects cities; it does not maximize the "
+             "population near the line.",
              Weights(slope=0.8, urban=0.0, env=1.0, row=0.5, pop=1.0), diversity=1.6, via_cities=True),
 ]
 
@@ -292,22 +294,46 @@ def generate_candidates(origin: tuple[float, float], dest: tuple[float, float],
 
 
 def _via_points(g: Grid, origin: tuple[float, float], dest: tuple[float, float],
-                max_offset: float = 0.15) -> list[tuple[int, int]]:
-    """Grid cells of known cities lying between o and d, within `max_offset` x direct distance
-    of the straight o-d line, ordered along the corridor."""
+                max_detour: float = 1.25, max_offset: float = 0.2) -> list[tuple[int, int]]:
+    """Grid cells of intermediate cities to route through, in travel order.
+
+    Cheapest insertion: candidate cities (between o and d, within `max_offset` x direct distance
+    of the o-d line) are tried largest-population first; each is inserted at the position that
+    adds the least straight-line distance, and kept only if the whole chain stays within
+    `max_detour` x the direct distance. This avoids zig-zagging between cities on both sides of
+    a long corridor. It connects cities; it does not maximize population near the line.
+    """
     ox, oy = _to_grid.transform(*origin)
     dx, dy = _to_grid.transform(*dest)
-    direct = np.hypot(dx - ox, dy - oy)
-    picks = []
+    direct = float(np.hypot(dx - ox, dy - oy))
+    cands = []
     for c in load_cities():
         cx, cy = _to_grid.transform(c["lon"], c["lat"])
-        d_o, d_d = np.hypot(cx - ox, cy - oy), np.hypot(dx - cx, dy - cy)
         along = ((cx - ox) * (dx - ox) + (cy - oy) * (dy - oy)) / direct
         offset = abs((cx - ox) * (dy - oy) - (cy - oy) * (dx - ox)) / direct
-        if min(d_o, d_d) < 15_000 or not (0 < along < direct) or offset > max_offset * direct:
+        near_end = min(np.hypot(cx - ox, cy - oy), np.hypot(dx - cx, dy - cy)) < 15_000
+        if near_end or not (0 < along < direct) or offset > max_offset * direct:
             continue
-        picks.append((along, _snap_to_land(g, g.rc(c["lon"], c["lat"]))))
-    return [rc for _, rc in sorted(picks)]
+        cands.append((c.get("population") or 0, (cx, cy), c))
+    chain = [(ox, oy), (dx, dy)]
+
+    def length(pts):
+        return sum(float(np.hypot(b[0] - a[0], b[1] - a[1])) for a, b in zip(pts[:-1], pts[1:]))
+
+    picked = []
+    for _, xy, c in sorted(cands, key=lambda t: -t[0]):
+        best = None
+        for i in range(1, len(chain)):
+            trial = chain[:i] + [xy] + chain[i:]
+            L = length(trial)
+            if best is None or L < best[0]:
+                best = (L, i)
+        if best and best[0] <= max_detour * direct:
+            chain.insert(best[1], xy)
+            picked.append((xy, c))
+    order = {xy: k for k, xy in enumerate(chain)}
+    picked.sort(key=lambda t: order[t[0]])
+    return [_snap_to_land(g, g.rc(c["lon"], c["lat"])) for _, c in picked]
 
 
 def load_cities() -> list[dict]:

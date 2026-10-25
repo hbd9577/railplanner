@@ -1,46 +1,61 @@
-import type { CSSProperties } from "react";
+// Formatting and alternative identity, shared by every view so units and styles stay consistent.
 
-// Gold / tan / brown palette (after the SBUHacks "Steel and Steam" site). Only the active corridor
-// carries color; the others are greyed out, so identity comes from the route number and name.
-export const PALETTE = {
-  yellow: "#f2b632", // gold: active corridor on the satellite map
-  gold: "#e8a91c", // active corridor in charts and tables on the dark page
-  tan: "#e6cf98",
-  brown: "#7b4a1e",
-  grey: "#6f6150", // inactive corridors in charts and tables
-  mapGrey: "#efe6d2", // inactive corridors on the satellite map
-};
-
-/** Fill for bars and marks: gold when active, muted brown-grey otherwise. */
-export function routeColor(i: number, selected: number): string {
-  return i === selected ? PALETTE.gold : PALETTE.grey;
+/** Each alternative keeps one identity everywhere: number, color and line pattern. */
+export interface AltStyle {
+  color: string;
+  dash: string | undefined; // Leaflet/SVG dash array; undefined = solid
+  pattern: "solid" | "dashed" | "dotted";
 }
 
-/** Number badge colors: gold with dark text when active, dark brown with cream text otherwise. */
-export function badgeStyle(i: number, selected: number): CSSProperties {
-  return i === selected ? { background: PALETTE.gold, color: "#221910" } : { background: "#3d3124", color: "#f3e7c9" };
+export const ALT_STYLES: AltStyle[] = [
+  { color: "#2563a8", dash: undefined, pattern: "solid" },
+  { color: "#b4540b", dash: "10 7", pattern: "dashed" },
+  { color: "#2e7a4e", dash: "2 6", pattern: "dotted" },
+];
+
+export function altStyle(i: number): AltStyle {
+  return ALT_STYLES[i % ALT_STYLES.length];
 }
 
+/** Money: always US dollars, billions with one decimal, millions with none. */
 export function usd(x: number): string {
-  if (x >= 1e9) return `$${(x / 1e9).toFixed(1)}B`;
-  if (x >= 1e6) return `$${(x / 1e6).toFixed(0)}M`;
+  if (Math.abs(x) >= 1e9) return `$${(x / 1e9).toFixed(1)}B`;
+  if (Math.abs(x) >= 1e6) return `$${(x / 1e6).toFixed(0)}M`;
   return `$${(x / 1e3).toFixed(0)}K`;
 }
 
-export function months(x: number): string {
-  return `${Math.round(x)} mo`;
+/** Durations are modeled in months and shown in years with one decimal. */
+export function years(months: number): string {
+  return `${(months / 12).toFixed(1)} yr`;
 }
 
-export function years(m: number): string {
-  return `${(m / 12).toFixed(1)} yrs`;
+export function months(m: number): string {
+  return `${Math.round(m)} mo`;
 }
 
+/** People: millions with two decimals, thousands with none. */
 export function people(x: number): string {
   if (x >= 1e6) return `${(x / 1e6).toFixed(2)}M`;
   if (x >= 1e3) return `${Math.round(x / 1e3)}K`;
-  return `${x}`;
+  return `${Math.round(x)}`;
+}
+
+export function miles(x: number): string {
+  return `${Math.round(x).toLocaleString()} mi`;
 }
 
 export function pct(x: number, digits = 0): string {
+  // never round a near-total up to an absolute claim
+  if (x < 100 && Number(x.toFixed(digits)) >= 100) return `over ${(100 - 10 ** -digits).toFixed(digits)}%`;
   return `${x.toFixed(digits)}%`;
+}
+
+export function signed(x: number, fmt: (v: number) => string): string {
+  if (Math.abs(x) < 1e-9) return "same";
+  return `${x > 0 ? "+" : "−"}${fmt(Math.abs(x))}`;
+}
+
+export function list(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }

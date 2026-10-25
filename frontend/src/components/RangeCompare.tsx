@@ -1,5 +1,6 @@
 import type { Distribution, RouteResult } from "../api";
-import { badgeStyle, routeColor } from "../format";
+import { altStyle } from "../format";
+import { AltName } from "./ui";
 
 interface Props {
   title: string;
@@ -10,7 +11,7 @@ interface Props {
   onSelect: (idx: number) => void;
 }
 
-// P10-P90 range bars on one shared axis, with a distinct mark and value for each percentile.
+// P10–P90 ranges on one shared axis with the median marked; the numbers sit beside each bar as a table.
 export default function RangeCompare({ title, routes, pick, format, selected, onSelect }: Props) {
   const lo = Math.min(...routes.map((r) => pick(r).p10));
   const hi = Math.max(...routes.map((r) => pick(r).p90));
@@ -18,40 +19,48 @@ export default function RangeCompare({ title, routes, pick, format, selected, on
   const x = (v: number) => ((v - (lo - pad)) / (hi - lo + 2 * pad)) * 100;
 
   return (
-    <div className="range-compare">
-      <div className="range-head">
-        <span className="range-title">{title}</span>
-        <span className="range-cols">
-          <span>P10</span>
-          <span>P50</span>
-          <span>P90</span>
-        </span>
-      </div>
-      {routes.map((r, i) => {
-        const d = pick(r);
-        const color = routeColor(i, selected);
-        return (
-          <button key={r.key} className={`range-row ${i === selected ? "sel" : ""}`} onClick={() => onSelect(i)}>
-            <span className="swatch" style={badgeStyle(i, selected)}>
-              {r.rank}
-            </span>
-            <span className="range-track">
-              <span
-                className="range-bar"
-                style={{ left: `${x(d.p10)}%`, width: `${x(d.p90) - x(d.p10)}%`, background: color }}
-              />
-              <span className="range-end" style={{ left: `${x(d.p10)}%`, borderColor: color }} />
-              <span className="range-end" style={{ left: `${x(d.p90)}%`, borderColor: color }} />
-              <span className="range-mid" style={{ left: `${x(d.p50)}%`, background: color }} />
-            </span>
-            <span className="range-cols values">
-              <span>{format(d.p10)}</span>
-              <strong>{format(d.p50)}</strong>
-              <span>{format(d.p90)}</span>
-            </span>
-          </button>
-        );
-      })}
-    </div>
+    <section className="panel">
+      <table className="ranges-table">
+        <caption>
+          <span className="cap-title">{title}</span>
+          <span className="cap-note">Bar: middle 80% of modeled outcomes. Tick: median.</span>
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Alternative</th>
+            <th scope="col" className="range-col">
+              <span className="sr-only">Range</span>
+            </th>
+            <th scope="col" className="num">P10</th>
+            <th scope="col" className="num">P50</th>
+            <th scope="col" className="num">P90</th>
+          </tr>
+        </thead>
+        <tbody>
+          {routes.map((r, i) => {
+            const d = pick(r);
+            const color = altStyle(i).color;
+            return (
+              <tr key={r.key} className={i === selected ? "sel" : ""}>
+                <th scope="row">
+                  <button className="th-btn" onClick={() => onSelect(i)} aria-pressed={i === selected}>
+                    <AltName r={r} i={i} />
+                  </button>
+                </th>
+                <td className="range-col" aria-hidden="true">
+                  <span className="range-track">
+                    <span className="range-bar" style={{ left: `${x(d.p10)}%`, width: `${x(d.p90) - x(d.p10)}%`, background: color }} />
+                    <span className="range-mid" style={{ left: `${x(d.p50)}%` }} />
+                  </span>
+                </td>
+                <td className="num">{format(d.p10)}</td>
+                <td className="num strong">{format(d.p50)}</td>
+                <td className="num">{format(d.p90)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
   );
 }

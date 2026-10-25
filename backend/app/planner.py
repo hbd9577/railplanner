@@ -23,6 +23,10 @@ from .simulation import run_simulation, summarize_from_db, summarize_local, writ
 
 log = logging.getLogger(__name__)
 
+# Bump when routing/scoring/simulation changes what a plan contains; older stored plans and demo
+# caches are then recomputed instead of being served.
+MODEL_VERSION = "2026.10.25-2"
+
 
 def assumptions(runs: int) -> list[str]:
     return [
@@ -100,7 +104,7 @@ def run_plan(origin_id: int, dest_id: int, runs: int | None = None, persist: boo
     if request_id is not None:
         _persist_funding(routes)
 
-    return PlanResult(request_id=request_id, origin=origin, destination=dest, routes=routes,
+    return PlanResult(model_version=MODEL_VERSION, request_id=request_id, origin=origin, destination=dest, routes=routes,
                       assumptions=assumptions(runs), data_sources=load_grid().meta["sources"],
                       created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
@@ -109,8 +113,8 @@ def _persist_routes(origin_id, dest_id, cands, stats) -> tuple[int, list[int]]:
     geom_sql = "ST_SetSRID(ST_GeomFromGeoJSON(%(gj_text)s), 4326)" if _has_postgis() else None
     with db.connection() as conn, conn.transaction():
         req = conn.execute(
-            "INSERT INTO corridor_requests (origin_city_id, dest_city_id) VALUES (%s, %s) RETURNING id",
-            (origin_id, dest_id)).fetchone()["id"]
+            "INSERT INTO corridor_requests (origin_city_id, dest_city_id, params) VALUES (%s, %s, %s) RETURNING id",
+            (origin_id, dest_id, Jsonb({"model_version": MODEL_VERSION}))).fetchone()["id"]
         ids = []
         for c, s in zip(cands, stats):
             gj = c.geojson()
@@ -177,7 +181,7 @@ def load_plan(request_id: int) -> PlanResult | None:
         for r in rows
     ]
     runs = routes[0].simulation.runs if routes else 0
-    return PlanResult(request_id=request_id, origin=get_city(req["origin_city_id"]),
+    return PlanResult(model_version=MODEL_VERSION, request_id=request_id, origin=get_city(req["origin_city_id"]),
                       destination=get_city(req["dest_city_id"]), routes=routes, assumptions=assumptions(runs),
                       data_sources=load_grid().meta["sources"],
                       created_at=req["created_at"].isoformat(timespec="seconds"), cached=True)
@@ -211,6 +215,8 @@ def load_demo_cache(origin: City, dest: City) -> PlanResult | None:
     if not p.exists():
         return None
     plan = PlanResult.model_validate_json(p.read_text(encoding="utf-8"))
+    if plan.model_version != MODEL_VERSION:
+        return None  # stale cache from an older model; recompute instead
     return plan.model_copy(update={"cached": True})
 
 
@@ -226,8 +232,9 @@ def find_latest_plan(origin_id: int, dest_id: int) -> int | None:
     with db.connection() as conn:
         row = conn.execute(
             "SELECT r.id FROM corridor_requests r WHERE r.origin_city_id = %s AND r.dest_city_id = %s "
+            "AND r.params->>'model_version' = %s "
             "AND EXISTS (SELECT 1 FROM routes WHERE request_id = r.id) ORDER BY r.created_at DESC LIMIT 1",
-            (origin_id, dest_id)).fetchone()
+            (origin_id, dest_id, MODEL_VERSION)).fetchone()
     return row["id"] if row else None
 
 

@@ -64,6 +64,19 @@ def people(n: float) -> str:
 
 # ---------------------------------------------------------------- payload
 
+# What the model does not cover; included in every payload so drafts and answers cannot imply it.
+NOT_MODELED = [
+    "service frequency, timetable and span of service",
+    "door-to-door or in-train travel time and travel-time competitiveness with driving, bus or air",
+    "ridership or station-pair demand forecasts",
+    "on-time performance and reliability",
+    "operating and maintenance costs, fare revenue and annual operating subsidy",
+    "track capacity, freight conflicts, train paths and access agreements with host railroads",
+    "rolling stock, maintenance facilities and electrification costs",
+    "benefit-cost ratio, emissions and safety outcomes",
+]
+
+
 def _route_payload(r: RouteResult) -> dict:
     s, c, d = r.stats, r.simulation.cost, r.simulation.duration
     eligible = [m for m in r.funding if m.eligible and m.fit_score > 0]
@@ -72,11 +85,13 @@ def _route_payload(r: RouteResult) -> dict:
         "name": r.label,
         "approach": r.description,
         "length": f"{s.length_miles:.0f} miles",
-        "share_on_existing_rail": f"{s.row_reuse_pct:.1f}%",
-        "population_near_line": people(s.population_served),
-        "stations": s.stations,
+        "share_on_existing_rail_corridors": f"{s.row_reuse_pct:.1f}%",
+        "new_track_length": f"{s.miles_new:.0f} miles",
+        "residents_near_alignment": people(s.population_served),
+        "residents_near_stations": people(s.pop_near_stations),
+        "stations_in_route_order": s.stations,
         "station_count": len(s.stations),
-        "composite_score": f"{s.score:.1f} out of 100",
+        "new_track_in_flagged_areas": f"{s.env_miles_new:.0f} miles",
         "environmental_flag_entries": s.env_flag_count,
         "river_crossings": s.river_crossings,
         "capital_cost": {"low_P10": usd(c.p10), "median_P50": usd(c.p50), "high_P90": usd(c.p90)},
@@ -100,18 +115,29 @@ def _route_payload(r: RouteResult) -> dict:
 def build_payload(plan: PlanResult) -> dict:
     routes = plan.routes
     leaders = {
-        "highest_score": max(routes, key=lambda r: r.stats.score).label,
         "lowest_median_cost": min(routes, key=lambda r: r.simulation.cost.p50).label,
-        "shortest_median_schedule": min(routes, key=lambda r: r.simulation.duration.p50).label,
-        "most_population_served": max(routes, key=lambda r: r.stats.population_served).label,
-        "shortest_length": min(routes, key=lambda r: r.stats.length_miles).label,
+        "shortest_median_time_to_opening": min(routes, key=lambda r: r.simulation.duration.p50).label,
+        "most_residents_near_stations": max(routes, key=lambda r: r.stats.pop_near_stations).label,
+        "most_stations": max(routes, key=lambda r: len(r.stats.stations)).label,
+        "shortest_alignment": min(routes, key=lambda r: r.stats.length_miles).label,
+        "highest_share_on_existing_rail_corridors": max(routes, key=lambda r: r.stats.row_reuse_pct).label,
     }
+    first = routes[0].stats if routes else None
     return {
         "corridor": f"{plan.origin.name}, {plan.origin.state} to {plan.destination.name}, {plan.destination.state}",
         "simulation_runs_per_alternative": routes[0].simulation.runs if routes else 0,
-        "population_buffer": f"{routes[0].stats.buffer_miles:.0f} miles" if routes else None,
+        "definitions": {
+            "residents_near_alignment": f"residents within {first.buffer_miles:.0f} miles of the line" if first else None,
+            "residents_near_stations": (f"residents within {first.station_catchment_km:.0f} km of any station, "
+                                        "counted once") if first else None,
+            "existing_rail_corridors": ("share of the path on existing rail right-of-way; this does not establish "
+                                        "ownership access, spare capacity or operating permission"),
+            "population_is_not_ridership": "population figures are not passenger forecasts",
+        },
+        "population_buffer": f"{first.buffer_miles:.0f} miles" if first else None,
         "alternatives": [_route_payload(r) for r in routes],
-        "leaders": leaders,
+        "leaders_on_single_measures": leaders,
+        "not_modeled": NOT_MODELED,
         "assumptions_and_limitations": plan.assumptions,
     }
 
@@ -167,6 +193,10 @@ You receive a JSON payload of computed results. Rules, strictly:
 - Name alternatives by their name (e.g. "the Pennsylvania corridor upgrade"); you may use
   "Alternative 1/2/3" since those numbers are in the payload.
 - Costs are illustrative estimates, not budgets. Say so where you discuss cost.
+- Do not rank alternatives overall or call one "best"; describe tradeoffs on individual measures.
+- Population figures are not ridership. Being on an existing rail corridor does not mean access,
+  capacity or permission to operate. Never imply anything listed under not_modeled was analyzed;
+  name those gaps in Risks and Next Steps.
 - Never mention JSON, the payload, or field names; write "median (P50)", "P10", "P90" in prose.
 - Plain, professional prose for a planning audience. No marketing language, no code formatting.
 - Each section is 1-3 short paragraphs of markdown (bullets allowed in Risks and Next Steps).
@@ -227,12 +257,12 @@ def _assemble(sections: ProposalSections) -> str:
 def template_proposal(payload: dict) -> str:
     """Deterministic fallback built only from payload strings (used when Gemini is unavailable)."""
     alts = payload["alternatives"]
-    lead = payload["leaders"]
+    lead = payload["leaders_on_single_measures"]
     lines = [f"# Corridor proposal: {payload['corridor']}", f"> **{DISCLAIMER}**", "## Executive Summary", ""]
     claims = {}
-    for key, text in (("highest_score", "the highest composite score"), ("lowest_median_cost", "the lowest median cost"),
-                      ("shortest_median_schedule", "the shortest median time to opening"),
-                      ("most_population_served", "the most residents near the line")):
+    for key, text in (("lowest_median_cost", "the lowest median cost"),
+                      ("shortest_median_time_to_opening", "the shortest median time to opening"),
+                      ("most_residents_near_stations", "the most residents near its stations")):
         claims.setdefault(lead[key], []).append(text)
     summary = " ".join(
         f"The {name} has {', '.join(c[:-1]) + ' and ' + c[-1] if len(c) > 1 else c[0]}." for name, c in claims.items()
@@ -241,8 +271,8 @@ def template_proposal(payload: dict) -> str:
     lines += ["", "## Corridor Description", ""]
     for a in alts:
         lines.append(
-            f"- **Alternative {a['number']}: {a['name']}**: {a['length']}, {a['share_on_existing_rail']} on existing rail, "
-            f"{a['population_near_line']} residents within {payload['population_buffer']}. {a['approach']}"
+            f"- **Alternative {a['number']}: {a['name']}**: {a['length']}, {a['share_on_existing_rail_corridors']} on "
+            f"existing rail corridors, {a['residents_near_stations']} residents near its stations. {a['approach']}"
         )
     lines += ["", "## Cost and Schedule Range", ""]
     for a in alts:
@@ -252,10 +282,11 @@ def template_proposal(payload: dict) -> str:
             f"time to opening {t['low_P10']} to {t['high_P90']} (median {t['median_P50']})."
         )
     lines += ["", "## Funding Strategy", ""]
-    top = next((a for a in alts if a["name"] == lead["highest_score"]), alts[0])
+    top = next((a for a in alts if a["name"] == lead["lowest_median_cost"]), alts[0])
     for m in top["funding_matches"][:4]:
         lines.append(f"- **{m['program']}** ({m['agency']}): {m['rationale']}")
     lines += ["", "## Risks", "", "- Cost benchmarks are uncalibrated; ranges reflect modeled uncertainty only.",
+              "- Not yet modeled: " + "; ".join(payload["not_modeled"]) + ".",
               "- Environmental flags and floodplain layers are screening-level and need field review.",
               "", "## Next Steps", "", "- Enter the corridor into FRA's Corridor ID program.",
               "- Commission a service development plan and calibrated cost estimate."]
